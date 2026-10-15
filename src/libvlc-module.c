@@ -321,6 +321,28 @@ static const char *const ppsz_align_descriptions[] =
     "The wallpaper mode allows you to display the video as the desktop " \
     "background." )
 
+static const char *const ppsz_video_stereo_input[] = {
+    "auto", "none", "side-by-side", "side-by-side-right-first",
+    "top-bottom", "top-bottom-right-first",
+};
+
+static const char *const ppsz_video_stereo_input_text[] = {
+    N_("Automatic"), N_("Not 3D"), N_("Side by side"),
+    N_("Side by side, right eye first"), N_("Top and bottom"),
+    N_("Top and bottom, right eye first"),
+};
+
+#define VIDEO_STEREO_INPUT_TEXT N_("3D packing of the video")
+#define VIDEO_STEREO_INPUT_LONGTEXT N_( \
+    "How the video holds its two views. Automatic takes the stream's own " \
+    "mark, then the 3D tag of the file name, then the frame's shape; the " \
+    "other choices override them, and Not 3D shows the video as it is." )
+
+#define VIDEO_STEREO_SWAP_TEXT N_("Swap the eyes of a 3D video")
+#define VIDEO_STEREO_SWAP_LONGTEXT N_( \
+    "Show the left view to the right eye and the right view to the left " \
+    "eye, for a video whose mark has them the wrong way round." )
+
 #define VIDEO_TITLE_SHOW_TEXT N_("Show media title on video")
 #define VIDEO_TITLE_SHOW_LONGTEXT N_( \
     "Display the title of the video on top of the movie.")
@@ -1581,6 +1603,12 @@ vlc_module_begin ()
               WALLPAPER_LONGTEXT, false )
     add_bool( "disable-screensaver", true, SS_TEXT, SS_LONGTEXT,
               true )
+
+    add_string( "video-stereo-input", "auto", VIDEO_STEREO_INPUT_TEXT,
+                VIDEO_STEREO_INPUT_LONGTEXT, false )
+        change_string_list( ppsz_video_stereo_input, ppsz_video_stereo_input_text )
+    add_bool( "video-stereo-swap", false, VIDEO_STEREO_SWAP_TEXT,
+              VIDEO_STEREO_SWAP_LONGTEXT, false )
 
     add_bool( "video-title-show", 1, VIDEO_TITLE_SHOW_TEXT,
               VIDEO_TITLE_SHOW_LONGTEXT, false )

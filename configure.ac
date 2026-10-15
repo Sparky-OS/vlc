@@ -3220,6 +3220,12 @@ PKG_CHECK_MODULES([STEREO_DECLARE], [stereo-declare x11], [
   AC_DEFINE([HAVE_STEREO_DECLARE], 1, [Defined if having libstereo-declare])
 ], [:])
 
+dnl The stereo policy the players of the edition share, for the decision whether
+dnl a video is 3D and how it is packed
+PKG_CHECK_MODULES([STEREO_POLICY], [stereo-policy >= 1.5.0], [
+  AC_DEFINE([HAVE_STEREO_POLICY], 1, [Defined if having libstereo-policy])
+], [:])
+
 dnl OpenGL ES 2: depends on EGL 1.1
 PKG_ENABLE_MODULES_VLC([GLES2], [], [glesv2], [OpenGL ES v2 support], [disabled])
 
