@@ -411,6 +411,19 @@ static int Open (vlc_object_t *obj, const struct gl_api *api)
     }
     sys->context = ctx;
 
+#ifdef USE_PLATFORM_WAYLAND
+    /* With a swap interval of 1, eglSwapBuffers() waits for the compositor's
+     * frame callback, and a window that is minimized, on another desktop or
+     * closing gets none: the swap never returns, the picture pool runs dry and
+     * the player cannot stop. The video output paces the pictures itself. */
+    if (eglMakeCurrent(sys->display, sys->surface, sys->surface, ctx) == EGL_TRUE)
+    {
+        eglSwapInterval(sys->display, 0);
+        eglMakeCurrent(sys->display, EGL_NO_SURFACE, EGL_NO_SURFACE,
+                       EGL_NO_CONTEXT);
+    }
+#endif
+
     /* Initialize OpenGL callbacks */
     gl->ext = VLC_GL_EXT_EGL;
     gl->makeCurrent = MakeCurrent;
