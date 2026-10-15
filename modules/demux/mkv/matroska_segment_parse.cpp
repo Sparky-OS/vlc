@@ -549,6 +549,13 @@ void matroska_segment_c::ParseTrackEntry( const KaxTrackEntry *m )
             if (i_display_unit == 0 && i_display_height == 0)
                 i_display_height = tk->fmt.video.i_height;
 
+            /* The size of one plane of a packed 3D frame (RFC 9559, section 18.10) */
+            if (i_display_unit == 0)
+            {
+                tk->fmt.video.i_stereo_plane_width  = i_display_width;
+                tk->fmt.video.i_stereo_plane_height = i_display_height;
+            }
+
             if (i_display_height && i_display_width)
             {
                 switch (i_display_unit)
