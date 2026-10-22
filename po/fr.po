@@ -30076,3 +30076,13 @@ msgid ""
 msgstr ""
 "Montre la vue gauche à l’œil droit et la vue droite à l’œil gauche, "
 "pour une vidéo dont la marque les donne inversées."
+
+#: src/video_output/vout_intf.c modules/gui/qt/menus.cpp
+msgid "Swap left and right eyes"
+msgstr "Inverser les vues gauche et droite"
+
+#: src/video_output/vout_intf.c
+msgid ""
+"Eye order could not be saved for this file; the correction applies to "
+"this playback only."
+msgstr "Impossible d’enregistrer l’ordre des vues pour ce fichier ; la correction s’applique uniquement à cette lecture."

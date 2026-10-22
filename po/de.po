@@ -30149,3 +30149,13 @@ msgstr ""
 "Zeigt die linke Ansicht dem rechten Auge und die rechte Ansicht dem "
 "linken Auge, für ein Video, dessen Kennzeichnung sie vertauscht "
 "angibt."
+
+#: src/video_output/vout_intf.c modules/gui/qt/menus.cpp
+msgid "Swap left and right eyes"
+msgstr "Linkes und rechtes Auge vertauschen"
+
+#: src/video_output/vout_intf.c
+msgid ""
+"Eye order could not be saved for this file; the correction applies to "
+"this playback only."
+msgstr "Die Augenreihenfolge konnte für diese Datei nicht gespeichert werden; die Korrektur gilt nur für diese Wiedergabe."

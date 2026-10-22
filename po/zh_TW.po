@@ -28378,3 +28378,13 @@ msgid ""
 "Show the left view to the right eye and the right view to the left "
 "eye, for a video whose mark has them the wrong way round."
 msgstr "將左視圖顯示給右眼、右視圖顯示給左眼，用於標記中左右顛倒的影片。"
+
+#: src/video_output/vout_intf.c modules/gui/qt/menus.cpp
+msgid "Swap left and right eyes"
+msgstr "交換左右眼"
+
+#: src/video_output/vout_intf.c
+msgid ""
+"Eye order could not be saved for this file; the correction applies to "
+"this playback only."
+msgstr "無法為此檔案儲存左右眼順序；校正僅對本次播放生效。"

@@ -29845,3 +29845,13 @@ msgid ""
 msgstr ""
 "Pokazuje lewy widok prawemu oku, a prawy widok lewemu oku, dla wideo, "
 "którego oznaczenie podaje je odwrotnie."
+
+#: src/video_output/vout_intf.c modules/gui/qt/menus.cpp
+msgid "Swap left and right eyes"
+msgstr "Zamień lewe i prawe oko"
+
+#: src/video_output/vout_intf.c
+msgid ""
+"Eye order could not be saved for this file; the correction applies to "
+"this playback only."
+msgstr "Nie można zapisać kolejności oczu dla tego pliku; korekta dotyczy tylko bieżącego odtwarzania."

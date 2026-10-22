@@ -29398,3 +29398,13 @@ msgid ""
 "Show the left view to the right eye and the right view to the left "
 "eye, for a video whose mark has them the wrong way round."
 msgstr "왼쪽 뷰를 오른쪽 눈에, 오른쪽 뷰를 왼쪽 눈에 보여 줍니다. 표시에서 좌우가 뒤바뀐 동영상을 위한 것입니다."
+
+#: src/video_output/vout_intf.c modules/gui/qt/menus.cpp
+msgid "Swap left and right eyes"
+msgstr "좌우 영상 바꾸기"
+
+#: src/video_output/vout_intf.c
+msgid ""
+"Eye order could not be saved for this file; the correction applies to "
+"this playback only."
+msgstr "이 파일의 좌우 영상 순서를 저장하지 못했습니다. 보정은 이번 재생에만 적용됩니다."

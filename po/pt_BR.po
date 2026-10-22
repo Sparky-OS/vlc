@@ -29982,3 +29982,13 @@ msgid ""
 msgstr ""
 "Mostra a vista esquerda ao olho direito e a vista direita ao olho "
 "esquerdo, para um vídeo cuja marca as traz trocadas."
+
+#: src/video_output/vout_intf.c modules/gui/qt/menus.cpp
+msgid "Swap left and right eyes"
+msgstr "Trocar as imagens esquerda e direita"
+
+#: src/video_output/vout_intf.c
+msgid ""
+"Eye order could not be saved for this file; the correction applies to "
+"this playback only."
+msgstr "Não foi possível salvar a ordem das imagens esquerda e direita para este arquivo; a correção vale apenas para esta reprodução."
