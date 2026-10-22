@@ -323,13 +323,20 @@ static const char *const ppsz_align_descriptions[] =
 
 static const char *const ppsz_video_stereo_input[] = {
     "auto", "none", "side-by-side", "side-by-side-right-first",
-    "top-bottom", "top-bottom-right-first",
+    "top-bottom", "top-bottom-right-first", "rows", "rows-right-first",
+    "columns", "columns-right-first", "checkerboard",
+    "checkerboard-right-first", "frame-sequential",
+    "frame-sequential-right-first",
 };
 
 static const char *const ppsz_video_stereo_input_text[] = {
     N_("Automatic"), N_("Not 3D"), N_("Side by side"),
     N_("Side by side, right eye first"), N_("Top and bottom"),
-    N_("Top and bottom, right eye first"),
+    N_("Top and bottom, right eye first"), N_("Row interleaved"),
+    N_("Row interleaved, right eye first"), N_("Column interleaved"),
+    N_("Column interleaved, right eye first"), N_("Checkerboard"),
+    N_("Checkerboard, right eye first"), N_("Frame sequential"),
+    N_("Frame sequential, right eye first"),
 };
 
 #define VIDEO_STEREO_INPUT_TEXT N_("3D packing of the video")

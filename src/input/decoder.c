@@ -444,9 +444,14 @@ static const char *StereoMarkName( video_multiview_mode_t mode )
         case MULTIVIEW_STEREO_TB:                return "topBottomLeftFirst";
         case MULTIVIEW_STEREO_TB_RIGHT_FIRST:    return "topBottomRightFirst";
         case MULTIVIEW_STEREO_ROW:               return "rowInterleavedLeftFirst";
+        case MULTIVIEW_STEREO_ROW_RIGHT_FIRST:   return "rowInterleavedRightFirst";
         case MULTIVIEW_STEREO_COL:               return "columnInterleavedLeftFirst";
+        case MULTIVIEW_STEREO_COL_RIGHT_FIRST:   return "columnInterleavedRightFirst";
         case MULTIVIEW_STEREO_FRAME:             return "frameSequentialLeftFirst";
+        case MULTIVIEW_STEREO_FRAME_RIGHT_FIRST: return "frameSequentialRightFirst";
         case MULTIVIEW_STEREO_CHECKERBOARD:      return "checkerboardLeftFirst";
+        case MULTIVIEW_STEREO_CHECKERBOARD_RIGHT_FIRST:
+                                                 return "checkerboardRightFirst";
         default:                                 return NULL;
     }
 }
@@ -457,18 +462,25 @@ static video_multiview_mode_t StereoMode( int layout, int order )
 
     switch( layout )
     {
+        /* the views of a quincunx side by side frame are side by side, each
+         * of its own samples */
         case STEREO_POLICY_LAYOUT_SIDE_BY_SIDE:
+        case STEREO_POLICY_LAYOUT_SIDE_BY_SIDE_QUINCUNX:
             return right ? MULTIVIEW_STEREO_SBS_RIGHT_FIRST : MULTIVIEW_STEREO_SBS;
         case STEREO_POLICY_LAYOUT_TOP_AND_BOTTOM:
             return right ? MULTIVIEW_STEREO_TB_RIGHT_FIRST : MULTIVIEW_STEREO_TB;
         case STEREO_POLICY_LAYOUT_ROWS:
-            return MULTIVIEW_STEREO_ROW;
+            return right ? MULTIVIEW_STEREO_ROW_RIGHT_FIRST : MULTIVIEW_STEREO_ROW;
         case STEREO_POLICY_LAYOUT_COLUMNS:
-            return MULTIVIEW_STEREO_COL;
+            return right ? MULTIVIEW_STEREO_COL_RIGHT_FIRST : MULTIVIEW_STEREO_COL;
+        /* both eyes laced in one Matroska block: one frame of each view in
+         * turn */
         case STEREO_POLICY_LAYOUT_FRAME_SEQUENTIAL:
-            return MULTIVIEW_STEREO_FRAME;
+        case STEREO_POLICY_LAYOUT_BLOCK_LACED:
+            return right ? MULTIVIEW_STEREO_FRAME_RIGHT_FIRST : MULTIVIEW_STEREO_FRAME;
         case STEREO_POLICY_LAYOUT_CHECKERBOARD:
-            return MULTIVIEW_STEREO_CHECKERBOARD;
+            return right ? MULTIVIEW_STEREO_CHECKERBOARD_RIGHT_FIRST
+                         : MULTIVIEW_STEREO_CHECKERBOARD;
         default:
             return MULTIVIEW_2D;
     }
@@ -553,22 +565,34 @@ static void StereoJudge( decoder_t *p_dec, video_format_t *fmt )
 
     if( psz_input != NULL )
     {
-        if( !strcmp( psz_input, "none" ) )
-            user_layout = STEREO_POLICY_USER_FORCE_2D;
-        else if( !strcmp( psz_input, "side-by-side" ) )
-            user_layout = STEREO_POLICY_LAYOUT_SIDE_BY_SIDE;
-        else if( !strcmp( psz_input, "side-by-side-right-first" ) )
+        static const struct
         {
-            user_layout = STEREO_POLICY_LAYOUT_SIDE_BY_SIDE;
-            user_order = STEREO_POLICY_RIGHT_FIRST;
-        }
-        else if( !strcmp( psz_input, "top-bottom" ) )
-            user_layout = STEREO_POLICY_LAYOUT_TOP_AND_BOTTOM;
-        else if( !strcmp( psz_input, "top-bottom-right-first" ) )
-        {
-            user_layout = STEREO_POLICY_LAYOUT_TOP_AND_BOTTOM;
-            user_order = STEREO_POLICY_RIGHT_FIRST;
-        }
+            const char *psz_name;
+            int layout;
+            int order;
+        } inputs[] = {
+            { "none", STEREO_POLICY_USER_FORCE_2D, STEREO_POLICY_LEFT_FIRST },
+            { "side-by-side", STEREO_POLICY_LAYOUT_SIDE_BY_SIDE, STEREO_POLICY_LEFT_FIRST },
+            { "side-by-side-right-first", STEREO_POLICY_LAYOUT_SIDE_BY_SIDE, STEREO_POLICY_RIGHT_FIRST },
+            { "top-bottom", STEREO_POLICY_LAYOUT_TOP_AND_BOTTOM, STEREO_POLICY_LEFT_FIRST },
+            { "top-bottom-right-first", STEREO_POLICY_LAYOUT_TOP_AND_BOTTOM, STEREO_POLICY_RIGHT_FIRST },
+            { "rows", STEREO_POLICY_LAYOUT_ROWS, STEREO_POLICY_LEFT_FIRST },
+            { "rows-right-first", STEREO_POLICY_LAYOUT_ROWS, STEREO_POLICY_RIGHT_FIRST },
+            { "columns", STEREO_POLICY_LAYOUT_COLUMNS, STEREO_POLICY_LEFT_FIRST },
+            { "columns-right-first", STEREO_POLICY_LAYOUT_COLUMNS, STEREO_POLICY_RIGHT_FIRST },
+            { "checkerboard", STEREO_POLICY_LAYOUT_CHECKERBOARD, STEREO_POLICY_LEFT_FIRST },
+            { "checkerboard-right-first", STEREO_POLICY_LAYOUT_CHECKERBOARD, STEREO_POLICY_RIGHT_FIRST },
+            { "frame-sequential", STEREO_POLICY_LAYOUT_FRAME_SEQUENTIAL, STEREO_POLICY_LEFT_FIRST },
+            { "frame-sequential-right-first", STEREO_POLICY_LAYOUT_FRAME_SEQUENTIAL, STEREO_POLICY_RIGHT_FIRST },
+        };
+
+        for( size_t i = 0; i < ARRAY_SIZE( inputs ); i++ )
+            if( !strcmp( psz_input, inputs[i].psz_name ) )
+            {
+                user_layout = inputs[i].layout;
+                user_order = inputs[i].order;
+                break;
+            }
         free( psz_input );
     }
 
