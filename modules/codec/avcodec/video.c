@@ -1091,6 +1091,20 @@ static int DecodeSidedata( decoder_t *p_dec, const AVFrame *frame, picture_t *p_
      * it, only tells it here. */
     const AVFrameSideData *p_s3d =
             av_frame_get_side_data( frame, AV_FRAME_DATA_STEREO3D );
+    /* Which constituent frame of a temporal interleaving this one is: the
+     * pairs are made from it, whatever gives the packing */
+    p_pic->i_stereo_frame = 0;
+    if( p_s3d )
+    {
+        const AVStereo3D *s3d = (const AVStereo3D *) p_s3d->data;
+        if( s3d->type == AV_STEREO3D_FRAMESEQUENCE )
+        {
+            if( s3d->view == AV_STEREO3D_VIEW_LEFT )
+                p_pic->i_stereo_frame = 1;
+            else if( s3d->view == AV_STEREO3D_VIEW_RIGHT )
+                p_pic->i_stereo_frame = 2;
+        }
+    }
     if( p_s3d && p_dec->fmt_in.video.multiview_mode == MULTIVIEW_2D )
     {
         const AVStereo3D *s3d = (const AVStereo3D *) p_s3d->data;
@@ -1099,13 +1113,32 @@ static int DecodeSidedata( decoder_t *p_dec, const AVFrame *frame, picture_t *p_
 
         switch( s3d->type )
         {
+            /* the views of a quincunx side by side frame are packed side by
+             * side, each of its own samples */
             case AV_STEREO3D_SIDEBYSIDE:
+            case AV_STEREO3D_SIDEBYSIDE_QUINCUNX:
                 mode = right_first ? MULTIVIEW_STEREO_SBS_RIGHT_FIRST
                                    : MULTIVIEW_STEREO_SBS;
                 break;
             case AV_STEREO3D_TOPBOTTOM:
                 mode = right_first ? MULTIVIEW_STEREO_TB_RIGHT_FIRST
                                    : MULTIVIEW_STEREO_TB;
+                break;
+            case AV_STEREO3D_LINES:
+                mode = right_first ? MULTIVIEW_STEREO_ROW_RIGHT_FIRST
+                                   : MULTIVIEW_STEREO_ROW;
+                break;
+            case AV_STEREO3D_COLUMNS:
+                mode = right_first ? MULTIVIEW_STEREO_COL_RIGHT_FIRST
+                                   : MULTIVIEW_STEREO_COL;
+                break;
+            case AV_STEREO3D_CHECKERBOARD:
+                mode = right_first ? MULTIVIEW_STEREO_CHECKERBOARD_RIGHT_FIRST
+                                   : MULTIVIEW_STEREO_CHECKERBOARD;
+                break;
+            case AV_STEREO3D_FRAMESEQUENCE:
+                mode = right_first ? MULTIVIEW_STEREO_FRAME_RIGHT_FIRST
+                                   : MULTIVIEW_STEREO_FRAME;
                 break;
             case AV_STEREO3D_2D:
                 mode = MULTIVIEW_2D;
@@ -1167,6 +1200,18 @@ static bool StereoSEICallback( const hxxx_sei_data_t *p_sei, void *priv )
     const bool left_first = p_sei->frame_packing.b_left_first;
     switch( p_sei->frame_packing.type )
     {
+        case FRAME_PACKING_INTERLEAVED_CHECKERBOARD:
+            *p_mode = left_first ? MULTIVIEW_STEREO_CHECKERBOARD
+                                 : MULTIVIEW_STEREO_CHECKERBOARD_RIGHT_FIRST;
+            break;
+        case FRAME_PACKING_INTERLEAVED_COLUMN:
+            *p_mode = left_first ? MULTIVIEW_STEREO_COL
+                                 : MULTIVIEW_STEREO_COL_RIGHT_FIRST;
+            break;
+        case FRAME_PACKING_INTERLEAVED_ROW:
+            *p_mode = left_first ? MULTIVIEW_STEREO_ROW
+                                 : MULTIVIEW_STEREO_ROW_RIGHT_FIRST;
+            break;
         case FRAME_PACKING_SIDE_BY_SIDE:
             *p_mode = left_first ? MULTIVIEW_STEREO_SBS
                                  : MULTIVIEW_STEREO_SBS_RIGHT_FIRST;
@@ -1174,6 +1219,10 @@ static bool StereoSEICallback( const hxxx_sei_data_t *p_sei, void *priv )
         case FRAME_PACKING_TOP_BOTTOM:
             *p_mode = left_first ? MULTIVIEW_STEREO_TB
                                  : MULTIVIEW_STEREO_TB_RIGHT_FIRST;
+            break;
+        case FRAME_PACKING_TEMPORAL:
+            *p_mode = left_first ? MULTIVIEW_STEREO_FRAME
+                                 : MULTIVIEW_STEREO_FRAME_RIGHT_FIRST;
             break;
         default:
             break;

@@ -1262,11 +1262,17 @@ static bool ParseSeiCallback( const hxxx_sei_data_t *p_sei_data, void *cbdata )
                 switch( p_sei_data->frame_packing.type )
                 {
                     case FRAME_PACKING_INTERLEAVED_CHECKERBOARD:
-                        mode = MULTIVIEW_STEREO_CHECKERBOARD; break;
+                        mode = p_sei_data->frame_packing.b_left_first ?
+                               MULTIVIEW_STEREO_CHECKERBOARD :
+                               MULTIVIEW_STEREO_CHECKERBOARD_RIGHT_FIRST; break;
                     case FRAME_PACKING_INTERLEAVED_COLUMN:
-                        mode = MULTIVIEW_STEREO_COL; break;
+                        mode = p_sei_data->frame_packing.b_left_first ?
+                               MULTIVIEW_STEREO_COL :
+                               MULTIVIEW_STEREO_COL_RIGHT_FIRST; break;
                     case FRAME_PACKING_INTERLEAVED_ROW:
-                        mode = MULTIVIEW_STEREO_ROW; break;
+                        mode = p_sei_data->frame_packing.b_left_first ?
+                               MULTIVIEW_STEREO_ROW :
+                               MULTIVIEW_STEREO_ROW_RIGHT_FIRST; break;
                     case FRAME_PACKING_SIDE_BY_SIDE:
                         mode = p_sei_data->frame_packing.b_left_first ?
                                MULTIVIEW_STEREO_SBS :
@@ -1276,7 +1282,9 @@ static bool ParseSeiCallback( const hxxx_sei_data_t *p_sei_data, void *cbdata )
                                MULTIVIEW_STEREO_TB :
                                MULTIVIEW_STEREO_TB_RIGHT_FIRST; break;
                     case FRAME_PACKING_TEMPORAL:
-                        mode = MULTIVIEW_STEREO_FRAME; break;
+                        mode = p_sei_data->frame_packing.b_left_first ?
+                               MULTIVIEW_STEREO_FRAME :
+                               MULTIVIEW_STEREO_FRAME_RIGHT_FIRST; break;
                     case FRAME_PACKING_TILED:
                     default:
                         mode = MULTIVIEW_2D; break;

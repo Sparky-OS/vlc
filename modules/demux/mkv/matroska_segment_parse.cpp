@@ -640,8 +640,34 @@ void matroska_segment_c::ParseTrackEntry( const KaxTrackEntry *m )
                 case 3:
                     vars.tk->fmt.video.multiview_mode = MULTIVIEW_STEREO_TB;
                     break;
+                case 4:
+                    vars.tk->fmt.video.multiview_mode = MULTIVIEW_STEREO_CHECKERBOARD_RIGHT_FIRST;
+                    break;
+                case 5:
+                    vars.tk->fmt.video.multiview_mode = MULTIVIEW_STEREO_CHECKERBOARD;
+                    break;
+                case 6:
+                    vars.tk->fmt.video.multiview_mode = MULTIVIEW_STEREO_ROW_RIGHT_FIRST;
+                    break;
+                case 7:
+                    vars.tk->fmt.video.multiview_mode = MULTIVIEW_STEREO_ROW;
+                    break;
+                case 8:
+                    vars.tk->fmt.video.multiview_mode = MULTIVIEW_STEREO_COL_RIGHT_FIRST;
+                    break;
+                case 9:
+                    vars.tk->fmt.video.multiview_mode = MULTIVIEW_STEREO_COL;
+                    break;
                 case 11:
                     vars.tk->fmt.video.multiview_mode = MULTIVIEW_STEREO_SBS_RIGHT_FIRST;
+                    break;
+                /* both eyes laced in one Block: one frame of each view in
+                 * turn, as a temporal interleaving */
+                case 13:
+                    vars.tk->fmt.video.multiview_mode = MULTIVIEW_STEREO_FRAME;
+                    break;
+                case 14:
+                    vars.tk->fmt.video.multiview_mode = MULTIVIEW_STEREO_FRAME_RIGHT_FIRST;
                     break;
                 default:
                     break;
