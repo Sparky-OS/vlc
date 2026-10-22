@@ -163,6 +163,9 @@ struct vout_display_opengl_t {
      * when the surface holds both views of a stereoscopic video */
     int viewport[4];
     int view_stride;
+    /* The views are interleaved in the picture (rows, columns, checkerboard):
+     * each sample is taken as it is, never filtered with its neighbours */
+    bool nearest;
 
     /* Non-power-of-2 texture size support */
     bool supports_npot;
@@ -928,6 +931,19 @@ vout_display_opengl_t *vout_display_opengl_New(video_format_t *fmt,
     GL_ASSERT_NOERROR();
     /* Update the fmt to main program one */
     vgl->fmt = vgl->prgm->tc->fmt;
+    switch (vgl->fmt.multiview_mode)
+    {
+    case MULTIVIEW_STEREO_ROW:
+    case MULTIVIEW_STEREO_ROW_RIGHT_FIRST:
+    case MULTIVIEW_STEREO_COL:
+    case MULTIVIEW_STEREO_COL_RIGHT_FIRST:
+    case MULTIVIEW_STEREO_CHECKERBOARD:
+    case MULTIVIEW_STEREO_CHECKERBOARD_RIGHT_FIRST:
+        vgl->nearest = true;
+        break;
+    default:
+        vgl->nearest = false;
+    }
     /* The orientation is handled by the orientation matrix */
     vgl->fmt.orientation = fmt->orientation;
 
@@ -1537,9 +1553,81 @@ static int BuildRectangle(unsigned nbPlanes,
     return VLC_SUCCESS;
 }
 
+/* A view of a checkerboard picture: one strip per row of the picture, each
+ * moved half a sample left or right, so that each pixel of the view samples
+ * the centre of its own sample in that row, whose place alternates from one
+ * row to the next. */
+static int BuildCheckerboard(unsigned nbPlanes, unsigned rows, unsigned view,
+                             GLfloat **vertexCoord, GLfloat **textureCoord, unsigned *nbVertices,
+                             GLushort **indices, unsigned *nbIndices,
+                             const float *left, const float *top,
+                             const float *right, const float *bottom,
+                             const float *shift)
+{
+    if (rows == 0 || 4 * rows > 65536)
+        return VLC_EGENERIC;
+
+    *nbVertices = 4 * rows;
+    *nbIndices = 6 * rows;
+
+    *vertexCoord = vlc_alloc(*nbVertices * 3, sizeof(GLfloat));
+    if (*vertexCoord == NULL)
+        return VLC_ENOMEM;
+    *textureCoord = vlc_alloc(nbPlanes * *nbVertices * 2, sizeof(GLfloat));
+    if (*textureCoord == NULL)
+    {
+        free(*vertexCoord);
+        return VLC_ENOMEM;
+    }
+    *indices = vlc_alloc(*nbIndices, sizeof(GLushort));
+    if (*indices == NULL)
+    {
+        free(*textureCoord);
+        free(*vertexCoord);
+        return VLC_ENOMEM;
+    }
+
+    for (unsigned r = 0; r < rows; r++)
+    {
+        const GLfloat y0 = 1.f - 2.f * r / rows;
+        const GLfloat y1 = 1.f - 2.f * (r + 1) / rows;
+        const GLfloat coord[] = {
+            -1.0, y0, -1.0f,
+            -1.0, y1, -1.0f,
+             1.0, y0, -1.0f,
+             1.0, y1, -1.0f,
+        };
+        memcpy(*vertexCoord + r * 12, coord, sizeof(coord));
+
+        for (unsigned p = 0; p < nbPlanes; ++p)
+        {
+            /* the first view has the samples where row and column are both
+             * even or both odd */
+            const float s = (r + view) & 1 ? shift[p] : -shift[p];
+            const float h = (bottom[p] - top[p]) / rows;
+            const GLfloat tex[] = {
+                left[p] + s,  top[p] + h * r,
+                left[p] + s,  top[p] + h * (r + 1),
+                right[p] + s, top[p] + h * r,
+                right[p] + s, top[p] + h * (r + 1),
+            };
+            memcpy(*textureCoord + p * *nbVertices * 2 + r * 8, tex, sizeof(tex));
+        }
+
+        const GLushort ind[] = {
+            4 * r, 4 * r + 1, 4 * r + 2,
+            4 * r + 2, 4 * r + 1, 4 * r + 3,
+        };
+        memcpy(*indices + r * 6, ind, sizeof(ind));
+    }
+
+    return VLC_SUCCESS;
+}
+
 static int SetupCoords(vout_display_opengl_t *vgl,
                        const float *left, const float *top,
-                       const float *right, const float *bottom)
+                       const float *right, const float *bottom,
+                       const float *checkerboard, unsigned rows, unsigned view)
 {
     GLfloat *vertexCoord, *textureCoord;
     GLushort *indices;
@@ -1549,10 +1637,16 @@ static int SetupCoords(vout_display_opengl_t *vgl,
     switch (vgl->fmt.projection_mode)
     {
     case PROJECTION_MODE_RECTANGULAR:
-        i_ret = BuildRectangle(vgl->prgm->tc->tex_count,
-                               &vertexCoord, &textureCoord, &nbVertices,
-                               &indices, &nbIndices,
-                               left, top, right, bottom);
+        if (checkerboard != NULL)
+            i_ret = BuildCheckerboard(vgl->prgm->tc->tex_count, rows, view,
+                                      &vertexCoord, &textureCoord, &nbVertices,
+                                      &indices, &nbIndices,
+                                      left, top, right, bottom, checkerboard);
+        else
+            i_ret = BuildRectangle(vgl->prgm->tc->tex_count,
+                                   &vertexCoord, &textureCoord, &nbVertices,
+                                   &indices, &nbIndices,
+                                   left, top, right, bottom);
         break;
     case PROJECTION_MODE_EQUIRECTANGULAR:
         i_ret = BuildSphere(vgl->prgm->tc->tex_count,
@@ -1609,6 +1703,11 @@ static void DrawWithShaders(vout_display_opengl_t *vgl, struct prgm *prgm)
         assert(vgl->texture[j] != 0);
         vgl->vt.ActiveTexture(GL_TEXTURE0+j);
         vgl->vt.BindTexture(tc->tex_target, vgl->texture[j]);
+        if (vgl->nearest)
+        {
+            vgl->vt.TexParameteri(tc->tex_target, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+            vgl->vt.TexParameteri(tc->tex_target, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+        }
 
         vgl->vt.BindBuffer(GL_ARRAY_BUFFER, vgl->texture_buffer_object[j]);
 
@@ -1658,9 +1757,15 @@ static void GetTextureCropParamsForStereo(unsigned i_nbTextures,
     }
 }
 
-static void TextureCropForStereo(vout_display_opengl_t *vgl, unsigned eye,
-                                 float *left, float *top,
-                                 float *right, float *bottom)
+/* The coordinates of the view an eye sees in each plane, and for a
+ * checkerboard picture the move of each row (checkerboard, NULL otherwise).
+ * Returns the view: the left eye sees the first view unless the picture
+ * holds the right view first. */
+static unsigned TextureCropForStereo(vout_display_opengl_t *vgl,
+                                     const video_format_t *source, unsigned eye,
+                                     float *left, float *top,
+                                     float *right, float *bottom,
+                                     float *checkerboard)
 {
     float stereoCoefs[2];
     float stereoOffsets[2];
@@ -1683,12 +1788,40 @@ static void TextureCropForStereo(vout_display_opengl_t *vgl, unsigned eye,
         stereoCoefs[0] = 0.5; stereoCoefs[1] = 1;
         stereoOffsets[0] = 0.5 * view; stereoOffsets[1] = 0;
         break;
+    /* The views of an interleaved picture take every other row, column or
+     * sample, the first view the even ones: the coordinates span the whole
+     * picture, moved by half a sample, so that each pixel of a view samples
+     * the centre of its own sample (with GL_NEAREST, see vgl->nearest) */
+    case MULTIVIEW_STEREO_ROW_RIGHT_FIRST:
+        view = !view;
+        /* fall through */
+    case MULTIVIEW_STEREO_ROW:
+        stereoCoefs[0] = 1; stereoCoefs[1] = 1;
+        stereoOffsets[0] = 0;
+        stereoOffsets[1] = (view - 0.5f) / source->i_visible_height;
+        break;
+    case MULTIVIEW_STEREO_COL_RIGHT_FIRST:
+        view = !view;
+        /* fall through */
+    case MULTIVIEW_STEREO_COL:
+        stereoCoefs[0] = 1; stereoCoefs[1] = 1;
+        stereoOffsets[0] = (view - 0.5f) / source->i_visible_width;
+        stereoOffsets[1] = 0;
+        break;
+    case MULTIVIEW_STEREO_CHECKERBOARD_RIGHT_FIRST:
+        view = !view;
+        /* fall through */
+    case MULTIVIEW_STEREO_CHECKERBOARD:
+        for (unsigned i = 0; i < vgl->prgm->tc->tex_count; ++i)
+            checkerboard[i] = 0.5f * (right[i] - left[i]) / source->i_visible_width;
+        return view;
     default:
-        return;
+        return view;
     }
     GetTextureCropParamsForStereo(vgl->prgm->tc->tex_count,
                                   stereoCoefs, stereoOffsets,
                                   left, top, right, bottom);
+    return view;
 }
 
 static int DisplayView(vout_display_opengl_t *vgl,
@@ -1735,8 +1868,12 @@ static int DisplayView(vout_display_opengl_t *vgl,
             bottom[j] = (source->i_y_offset + source->i_visible_height) * scale_h;
         }
 
-        TextureCropForStereo(vgl, eye, left, top, right, bottom);
-        int ret = SetupCoords(vgl, left, top, right, bottom);
+        float checkerboard[PICTURE_PLANE_MAX] = { 0 };
+        unsigned view = TextureCropForStereo(vgl, source, eye, left, top,
+                                             right, bottom, checkerboard);
+        int ret = SetupCoords(vgl, left, top, right, bottom,
+                              checkerboard[0] != 0 ? checkerboard : NULL,
+                              source->i_visible_height, view);
         if (ret != VLC_SUCCESS)
             return ret;
 
@@ -1846,6 +1983,12 @@ int vout_display_opengl_Display(vout_display_opengl_t *vgl,
     case MULTIVIEW_STEREO_SBS_RIGHT_FIRST:
     case MULTIVIEW_STEREO_TB:
     case MULTIVIEW_STEREO_TB_RIGHT_FIRST:
+    case MULTIVIEW_STEREO_ROW:
+    case MULTIVIEW_STEREO_ROW_RIGHT_FIRST:
+    case MULTIVIEW_STEREO_COL:
+    case MULTIVIEW_STEREO_COL_RIGHT_FIRST:
+    case MULTIVIEW_STEREO_CHECKERBOARD:
+    case MULTIVIEW_STEREO_CHECKERBOARD_RIGHT_FIRST:
         break;
     default:
         stereo = false;

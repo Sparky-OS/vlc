@@ -1028,6 +1028,12 @@ static int ThreadDisplayRenderPicture(vout_thread_t *vout, bool is_forced)
             case MULTIVIEW_STEREO_SBS_RIGHT_FIRST:
             case MULTIVIEW_STEREO_TB:
             case MULTIVIEW_STEREO_TB_RIGHT_FIRST:
+            case MULTIVIEW_STEREO_ROW:
+            case MULTIVIEW_STEREO_ROW_RIGHT_FIRST:
+            case MULTIVIEW_STEREO_COL:
+            case MULTIVIEW_STEREO_COL_RIGHT_FIRST:
+            case MULTIVIEW_STEREO_CHECKERBOARD:
+            case MULTIVIEW_STEREO_CHECKERBOARD_RIGHT_FIRST:
                 views = true;
                 break;
             default:

@@ -143,6 +143,12 @@ static void DeclareStereo (vout_display_t *vd, vout_window_t *surface)
         case MULTIVIEW_STEREO_SBS_RIGHT_FIRST:
         case MULTIVIEW_STEREO_TB:
         case MULTIVIEW_STEREO_TB_RIGHT_FIRST:
+        case MULTIVIEW_STEREO_ROW:
+        case MULTIVIEW_STEREO_ROW_RIGHT_FIRST:
+        case MULTIVIEW_STEREO_COL:
+        case MULTIVIEW_STEREO_COL_RIGHT_FIRST:
+        case MULTIVIEW_STEREO_CHECKERBOARD:
+        case MULTIVIEW_STEREO_CHECKERBOARD_RIGHT_FIRST:
             break;
         default:
             return;
@@ -460,10 +466,16 @@ static void PlaceOnSurface(vout_display_t *vd, const vout_display_cfg_t *cfg,
     {
     case MULTIVIEW_STEREO_SBS:
     case MULTIVIEW_STEREO_SBS_RIGHT_FIRST:
+    case MULTIVIEW_STEREO_COL:
+    case MULTIVIEW_STEREO_COL_RIGHT_FIRST:
+    case MULTIVIEW_STEREO_CHECKERBOARD:
+    case MULTIVIEW_STEREO_CHECKERBOARD_RIGHT_FIRST:
         view_w /= 2;
         break;
     case MULTIVIEW_STEREO_TB:
     case MULTIVIEW_STEREO_TB_RIGHT_FIRST:
+    case MULTIVIEW_STEREO_ROW:
+    case MULTIVIEW_STEREO_ROW_RIGHT_FIRST:
         view_h /= 2;
         break;
     default:
