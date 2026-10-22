@@ -328,22 +328,37 @@ void vout_IntfInit( vout_thread_t *p_vout )
 }
 
 /**
- * Gives the video output the eye correction of the input it now shows: the
- * one stored with its file, as the decoder applied it, never the previous
- * input's.
+ * Binds the video output to the input it now shows, and gives it that
+ * input's eye correction: the one the decoder applied when the input opened,
+ * and the user's current one, which a video output made again while the
+ * input plays keeps. Never the previous input's.
  */
 void vout_IntfBindInput( vout_thread_t *p_vout, vlc_object_t *p_input )
 {
-    char *psz_path = p_input != NULL ? var_GetString( p_input, "stereo-file-path" ) : NULL;
-    bool b_swap = p_input != NULL && var_GetBool( p_input, "stereo-file-swap" );
-
-    /* Binding another input must never store its correction with the old file */
+    /* Wait for a callback of the previous input to end before changing it,
+     * and never store this input's correction with the old file */
     var_DelCallback( p_vout, "stereo-swap-eyes", StereoSwapCallback, NULL );
+    p_vout->p->input = p_input;
+
+    char *psz_path = p_input != NULL ? var_GetString( p_input, "stereo-file-path" ) : NULL;
+    bool b_base = p_input != NULL && var_GetBool( p_input, "stereo-file-swap" );
+    bool b_swap = p_input != NULL && var_GetBool( p_input, "stereo-file-swap-current" );
+
     var_SetString( p_vout, "stereo-file-path", psz_path != NULL ? psz_path : "" );
-    var_SetBool( p_vout, "stereo-swap-eyes-base", b_swap );
+    var_SetBool( p_vout, "stereo-swap-eyes-base", b_base );
     var_SetBool( p_vout, "stereo-swap-eyes", b_swap );
     var_AddCallback( p_vout, "stereo-swap-eyes", StereoSwapCallback, NULL );
     free( psz_path );
+}
+
+/**
+ * Unbinds a video output that closes: a menu can still hold it after its
+ * input has gone.
+ */
+void vout_IntfClose( vout_thread_t *p_vout )
+{
+    var_DelCallback( p_vout, "stereo-swap-eyes", StereoSwapCallback, NULL );
+    p_vout->p->input = NULL;
 }
 
 /* Stores the user's eye correction with the file, as the shared stereo policy
@@ -359,6 +374,9 @@ static int StereoSwapCallback( vlc_object_t *p_this, char const *psz_name,
         return VLC_SUCCESS;
 
     vout_thread_t *p_vout = (vout_thread_t *)p_this;
+    if( p_vout->p->input != NULL )
+        var_SetBool( p_vout->p->input, "stereo-file-swap-current", newval.b_bool );
+
     char *psz_path = var_GetString( p_vout, "stereo-file-path" );
     int i_ret = -1;
 #ifdef HAVE_STEREO_POLICY

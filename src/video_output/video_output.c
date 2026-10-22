@@ -210,7 +210,6 @@ static vout_thread_t *VoutCreate(vlc_object_t *object,
         return NULL;
     }
 
-    vout->p->input = cfg->input;
     vout_IntfBindInput(vout, cfg->input);
     if (vout->p->input)
         spu_Attach(vout->p->spu, vout->p->input, true);
@@ -232,10 +231,9 @@ vout_thread_t *vout_Request(vlc_object_t *object,
     /* If a vout is provided, try reusing it */
     if (vout) {
         if (vout->p->input != cfg->input) {
-            vout_IntfBindInput(vout, cfg->input);
             if (vout->p->input)
                 spu_Attach(vout->p->spu, vout->p->input, false);
-            vout->p->input = cfg->input;
+            vout_IntfBindInput(vout, cfg->input);
             if (vout->p->input)
                 spu_Attach(vout->p->spu, vout->p->input, true);
         }
@@ -267,6 +265,7 @@ void vout_Close(vout_thread_t *vout)
 
     if (vout->p->input)
         spu_Attach(vout->p->spu, vout->p->input, false);
+    vout_IntfClose(vout);
 
     vout_snapshot_End(&vout->p->snapshot);
 

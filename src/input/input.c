@@ -412,8 +412,10 @@ static input_thread_t *Create( vlc_object_t *p_parent, input_item_t *p_item,
     input_ConfigVarInit( p_input );
 
     /* The eye correction stored with the file, read once: the decoder takes
-     * it as it was when the input opened, and the video output saves a new
-     * one and shows the difference at once. */
+     * it as it was when the input opened (stereo-file-swap), and the video
+     * output saves a new one and shows the difference at once. The input
+     * keeps the user's current one (stereo-file-swap-current), for a video
+     * output made again while it plays. */
     char *psz_uri = input_item_GetURI( p_item );
     char *psz_path = psz_uri != NULL ? vlc_uri2path( psz_uri ) : NULL;
     var_Create( p_input, "stereo-file-path", VLC_VAR_STRING );
@@ -423,6 +425,9 @@ static input_thread_t *Create( vlc_object_t *p_parent, input_item_t *p_item,
     var_SetBool( p_input, "stereo-file-swap",
                  psz_path != NULL && stereo_policy_file_swap_eyes( psz_path ) == 1 );
 #endif
+    var_Create( p_input, "stereo-file-swap-current", VLC_VAR_BOOL );
+    var_SetBool( p_input, "stereo-file-swap-current",
+                 var_GetBool( p_input, "stereo-file-swap" ) );
     free( psz_path );
     free( psz_uri );
 

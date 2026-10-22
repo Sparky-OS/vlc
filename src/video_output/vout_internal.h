@@ -156,6 +156,7 @@ void vout_ControlChangeViewpoint( vout_thread_t *, const vlc_viewpoint_t *);
 /* */
 void vout_IntfInit( vout_thread_t * );
 void vout_IntfBindInput( vout_thread_t *, vlc_object_t * );
+void vout_IntfClose( vout_thread_t * );
 void vout_IntfReinit( vout_thread_t * );
 
 /* */
