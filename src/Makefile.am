@@ -174,7 +174,7 @@ AM_CPPFLAGS = $(INCICONV) $(IDN_CFLAGS) \
 	-DLOCALEDIR=\"$(localedir)\" \
 	-DPKGDATADIR=\"$(vlcdatadir)\" \
 	-DPKGLIBDIR=\"$(vlclibdir)\"
-AM_CFLAGS = $(CFLAGS_libvlccore)
+AM_CFLAGS = $(CFLAGS_libvlccore) $(STEREO_POLICY_CFLAGS)
 if HAVE_DYNAMIC_PLUGINS
 AM_CPPFLAGS += -DHAVE_DYNAMIC_PLUGINS
 endif
@@ -356,7 +356,8 @@ libvlccore_la_SOURCES = \
 libvlccore_la_LIBADD = $(LIBS_libvlccore) \
 	../compat/libcompat.la \
 	$(LTLIBINTL) $(LTLIBICONV) \
-	$(IDN_LIBS) $(LIBPTHREAD) $(SOCKET_LIBS) $(LIBRT) $(LIBDL) $(LIBM)
+	$(IDN_LIBS) $(LIBPTHREAD) $(SOCKET_LIBS) $(LIBRT) $(LIBDL) $(LIBM) \
+	$(STEREO_POLICY_LIBS)
 
 if HAVE_WIN32
 libvlccore_la_SOURCES += \
