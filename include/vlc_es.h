@@ -237,6 +237,18 @@ typedef enum video_multiview_mode_t
 
     /* Top-bottom with right eye first. */
     MULTIVIEW_STEREO_TB_RIGHT_FIRST,
+
+    /* Row sequential with right eye first. */
+    MULTIVIEW_STEREO_ROW_RIGHT_FIRST,
+
+    /* Column sequential with right eye first. */
+    MULTIVIEW_STEREO_COL_RIGHT_FIRST,
+
+    /* Frame sequential with right eye first. */
+    MULTIVIEW_STEREO_FRAME_RIGHT_FIRST,
+
+    /* Checkerboard pattern with right eye first. */
+    MULTIVIEW_STEREO_CHECKERBOARD_RIGHT_FIRST,
 } video_multiview_mode_t;
 
 /**

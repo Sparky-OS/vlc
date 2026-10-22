@@ -786,11 +786,14 @@ static int FramePackingFromMultiview( video_multiview_mode_t mode )
 {
     switch( mode )
     {
-        case MULTIVIEW_STEREO_CHECKERBOARD: return 0;
-        case MULTIVIEW_STEREO_COL:          return 1;
-        case MULTIVIEW_STEREO_ROW:          return 2;
         /* x264 signals the left view first whatever the input says, the
          * layout is kept */
+        case MULTIVIEW_STEREO_CHECKERBOARD:
+        case MULTIVIEW_STEREO_CHECKERBOARD_RIGHT_FIRST: return 0;
+        case MULTIVIEW_STEREO_COL:
+        case MULTIVIEW_STEREO_COL_RIGHT_FIRST: return 1;
+        case MULTIVIEW_STEREO_ROW:
+        case MULTIVIEW_STEREO_ROW_RIGHT_FIRST: return 2;
         case MULTIVIEW_STEREO_SBS:
         case MULTIVIEW_STEREO_SBS_RIGHT_FIRST: return 3;
         case MULTIVIEW_STEREO_TB:
