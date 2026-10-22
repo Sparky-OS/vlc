@@ -29323,3 +29323,78 @@ msgstr "AAAA; "
 #: modules/gui/qt/ui/vlm.h:299
 msgid "Media Manager List"
 msgstr "미디어 관리자 목록"
+
+#: src/libvlc-module.c
+msgid "3D packing of the video"
+msgstr "동영상의 3D 배치"
+
+#: src/libvlc-module.c
+msgid ""
+"How the video holds its two views. Automatic takes the stream's own "
+"mark, then the 3D tag of the file name, then the frame's shape; the "
+"other choices override them, and Not 3D shows the video as it is."
+msgstr ""
+"동영상이 두 뷰를 담는 방식입니다. 자동은 스트림 자체의 표시, 그다음 파일 이름의 3D 태그, 그다음 프레임 모양을 "
+"따릅니다. 다른 선택은 이보다 우선하며, 3D 아님은 동영상을 그대로 보여 줍니다."
+
+#: src/libvlc-module.c
+msgid "Not 3D"
+msgstr "3D 아님"
+
+#: src/libvlc-module.c
+msgid "Side by side"
+msgstr "사이드 바이 사이드"
+
+#: src/libvlc-module.c
+msgid "Side by side, right eye first"
+msgstr "사이드 바이 사이드, 오른쪽 눈 먼저"
+
+#: src/libvlc-module.c
+msgid "Top and bottom"
+msgstr "위아래"
+
+#: src/libvlc-module.c
+msgid "Top and bottom, right eye first"
+msgstr "위아래, 오른쪽 눈 먼저"
+
+#: src/libvlc-module.c
+msgid "Row interleaved"
+msgstr "행 인터리브"
+
+#: src/libvlc-module.c
+msgid "Row interleaved, right eye first"
+msgstr "행 인터리브, 오른쪽 눈 먼저"
+
+#: src/libvlc-module.c
+msgid "Column interleaved"
+msgstr "열 인터리브"
+
+#: src/libvlc-module.c
+msgid "Column interleaved, right eye first"
+msgstr "열 인터리브, 오른쪽 눈 먼저"
+
+#: src/libvlc-module.c
+msgid "Checkerboard"
+msgstr "체커보드"
+
+#: src/libvlc-module.c
+msgid "Checkerboard, right eye first"
+msgstr "체커보드, 오른쪽 눈 먼저"
+
+#: src/libvlc-module.c
+msgid "Frame sequential"
+msgstr "프레임 순차"
+
+#: src/libvlc-module.c
+msgid "Frame sequential, right eye first"
+msgstr "프레임 순차, 오른쪽 눈 먼저"
+
+#: src/libvlc-module.c
+msgid "Swap the eyes of a 3D video"
+msgstr "3D 동영상의 양쪽 눈 바꾸기"
+
+#: src/libvlc-module.c
+msgid ""
+"Show the left view to the right eye and the right view to the left "
+"eye, for a video whose mark has them the wrong way round."
+msgstr "왼쪽 뷰를 오른쪽 눈에, 오른쪽 뷰를 왼쪽 눈에 보여 줍니다. 표시에서 좌우가 뒤바뀐 동영상을 위한 것입니다."

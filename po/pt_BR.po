@@ -29903,3 +29903,82 @@ msgstr "AAAA; "
 #: modules/gui/qt/ui/vlm.h:299
 msgid "Media Manager List"
 msgstr "Lista do Gerenciador de Mídias"
+
+#: src/libvlc-module.c
+msgid "3D packing of the video"
+msgstr "Formato 3D do vídeo"
+
+#: src/libvlc-module.c
+msgid ""
+"How the video holds its two views. Automatic takes the stream's own "
+"mark, then the 3D tag of the file name, then the frame's shape; the "
+"other choices override them, and Not 3D shows the video as it is."
+msgstr ""
+"Como o vídeo guarda suas duas vistas. Automático segue a marca do "
+"próprio fluxo, depois a etiqueta 3D do nome do arquivo, depois o "
+"formato do quadro; as outras opções têm prioridade sobre elas, e Não "
+"3D mostra o vídeo como ele é."
+
+#: src/libvlc-module.c
+msgid "Not 3D"
+msgstr "Não 3D"
+
+#: src/libvlc-module.c
+msgid "Side by side"
+msgstr "Lado a lado"
+
+#: src/libvlc-module.c
+msgid "Side by side, right eye first"
+msgstr "Lado a lado, olho direito primeiro"
+
+#: src/libvlc-module.c
+msgid "Top and bottom"
+msgstr "Em cima e embaixo"
+
+#: src/libvlc-module.c
+msgid "Top and bottom, right eye first"
+msgstr "Em cima e embaixo, olho direito primeiro"
+
+#: src/libvlc-module.c
+msgid "Row interleaved"
+msgstr "Linhas intercaladas"
+
+#: src/libvlc-module.c
+msgid "Row interleaved, right eye first"
+msgstr "Linhas intercaladas, olho direito primeiro"
+
+#: src/libvlc-module.c
+msgid "Column interleaved"
+msgstr "Colunas intercaladas"
+
+#: src/libvlc-module.c
+msgid "Column interleaved, right eye first"
+msgstr "Colunas intercaladas, olho direito primeiro"
+
+#: src/libvlc-module.c
+msgid "Checkerboard"
+msgstr "Tabuleiro de xadrez"
+
+#: src/libvlc-module.c
+msgid "Checkerboard, right eye first"
+msgstr "Tabuleiro de xadrez, olho direito primeiro"
+
+#: src/libvlc-module.c
+msgid "Frame sequential"
+msgstr "Quadros sequenciais"
+
+#: src/libvlc-module.c
+msgid "Frame sequential, right eye first"
+msgstr "Quadros sequenciais, olho direito primeiro"
+
+#: src/libvlc-module.c
+msgid "Swap the eyes of a 3D video"
+msgstr "Trocar os olhos de um vídeo 3D"
+
+#: src/libvlc-module.c
+msgid ""
+"Show the left view to the right eye and the right view to the left "
+"eye, for a video whose mark has them the wrong way round."
+msgstr ""
+"Mostra a vista esquerda ao olho direito e a vista direita ao olho "
+"esquerdo, para um vídeo cuja marca as traz trocadas."

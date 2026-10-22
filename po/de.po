@@ -30069,3 +30069,83 @@ msgstr "AAAA; "
 #: modules/gui/qt/ui/vlm.h:299
 msgid "Media Manager List"
 msgstr "Media Manager-Liste"
+
+#: src/libvlc-module.c
+msgid "3D packing of the video"
+msgstr "3D-Anordnung des Videos"
+
+#: src/libvlc-module.c
+msgid ""
+"How the video holds its two views. Automatic takes the stream's own "
+"mark, then the 3D tag of the file name, then the frame's shape; the "
+"other choices override them, and Not 3D shows the video as it is."
+msgstr ""
+"Wie das Video seine zwei Ansichten enthält. Automatisch folgt der "
+"Kennzeichnung im Datenstrom selbst, dann der 3D-Angabe im Dateinamen, "
+"dann der Form des Bildes; die anderen Optionen haben Vorrang vor "
+"diesen, und Kein 3D zeigt das Video unverändert."
+
+#: src/libvlc-module.c
+msgid "Not 3D"
+msgstr "Kein 3D"
+
+#: src/libvlc-module.c
+msgid "Side by side"
+msgstr "Nebeneinander"
+
+#: src/libvlc-module.c
+msgid "Side by side, right eye first"
+msgstr "Nebeneinander, rechtes Auge zuerst"
+
+#: src/libvlc-module.c
+msgid "Top and bottom"
+msgstr "Übereinander"
+
+#: src/libvlc-module.c
+msgid "Top and bottom, right eye first"
+msgstr "Übereinander, rechtes Auge zuerst"
+
+#: src/libvlc-module.c
+msgid "Row interleaved"
+msgstr "Zeilenweise verschachtelt"
+
+#: src/libvlc-module.c
+msgid "Row interleaved, right eye first"
+msgstr "Zeilenweise verschachtelt, rechtes Auge zuerst"
+
+#: src/libvlc-module.c
+msgid "Column interleaved"
+msgstr "Spaltenweise verschachtelt"
+
+#: src/libvlc-module.c
+msgid "Column interleaved, right eye first"
+msgstr "Spaltenweise verschachtelt, rechtes Auge zuerst"
+
+#: src/libvlc-module.c
+msgid "Checkerboard"
+msgstr "Schachbrett"
+
+#: src/libvlc-module.c
+msgid "Checkerboard, right eye first"
+msgstr "Schachbrett, rechtes Auge zuerst"
+
+#: src/libvlc-module.c
+msgid "Frame sequential"
+msgstr "Bildsequenziell"
+
+#: src/libvlc-module.c
+msgid "Frame sequential, right eye first"
+msgstr "Bildsequenziell, rechtes Auge zuerst"
+
+#: src/libvlc-module.c
+msgid "Swap the eyes of a 3D video"
+msgstr "Augen eines 3D-Videos tauschen"
+
+#: src/libvlc-module.c
+msgid ""
+"Show the left view to the right eye and the right view to the left "
+"eye, for a video whose mark has them the wrong way round."
+msgstr ""
+"Zeigt die linke Ansicht dem rechten Auge und die rechte Ansicht dem "
+"linken Auge, für ein Video, dessen Kennzeichnung sie vertauscht "
+"angibt."

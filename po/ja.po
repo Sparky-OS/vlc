@@ -29600,3 +29600,77 @@ msgstr "AAAA; "
 #: modules/gui/qt/ui/vlm.h:299
 msgid "Media Manager List"
 msgstr "メディアマネージャーリスト"
+
+#: src/libvlc-module.c
+msgid "3D packing of the video"
+msgstr "動画の3D配置"
+
+#: src/libvlc-module.c
+msgid ""
+"How the video holds its two views. Automatic takes the stream's own "
+"mark, then the 3D tag of the file name, then the frame's shape; the "
+"other choices override them, and Not 3D shows the video as it is."
+msgstr ""
+"動画が2つのビューをどのように格納しているか。「自動」はストリーム自身のマーク、次にファイル名の3Dタグ、次にフレームの形状に従います。その他の選択肢はそれらより優先され、「3Dではない」は動画をそのまま表示します。"
+
+#: src/libvlc-module.c
+msgid "Not 3D"
+msgstr "3Dではない"
+
+#: src/libvlc-module.c
+msgid "Side by side"
+msgstr "サイドバイサイド"
+
+#: src/libvlc-module.c
+msgid "Side by side, right eye first"
+msgstr "サイドバイサイド、右目が先"
+
+#: src/libvlc-module.c
+msgid "Top and bottom"
+msgstr "トップアンドボトム"
+
+#: src/libvlc-module.c
+msgid "Top and bottom, right eye first"
+msgstr "トップアンドボトム、右目が先"
+
+#: src/libvlc-module.c
+msgid "Row interleaved"
+msgstr "行インターリーブ"
+
+#: src/libvlc-module.c
+msgid "Row interleaved, right eye first"
+msgstr "行インターリーブ、右目が先"
+
+#: src/libvlc-module.c
+msgid "Column interleaved"
+msgstr "列インターリーブ"
+
+#: src/libvlc-module.c
+msgid "Column interleaved, right eye first"
+msgstr "列インターリーブ、右目が先"
+
+#: src/libvlc-module.c
+msgid "Checkerboard"
+msgstr "チェッカーボード"
+
+#: src/libvlc-module.c
+msgid "Checkerboard, right eye first"
+msgstr "チェッカーボード、右目が先"
+
+#: src/libvlc-module.c
+msgid "Frame sequential"
+msgstr "フレームシーケンシャル"
+
+#: src/libvlc-module.c
+msgid "Frame sequential, right eye first"
+msgstr "フレームシーケンシャル、右目が先"
+
+#: src/libvlc-module.c
+msgid "Swap the eyes of a 3D video"
+msgstr "3D動画の左右の目を入れ替える"
+
+#: src/libvlc-module.c
+msgid ""
+"Show the left view to the right eye and the right view to the left "
+"eye, for a video whose mark has them the wrong way round."
+msgstr "左のビューを右目に、右のビューを左目に表示します。マークで左右が逆になっている動画のためのものです。"

@@ -28687,3 +28687,76 @@ msgstr "AAAA; "
 #: modules/gui/qt/ui/vlm.h:299
 msgid "Media Manager List"
 msgstr "媒体管理器列表"
+
+#: src/libvlc-module.c
+msgid "3D packing of the video"
+msgstr "视频的 3D 排列方式"
+
+#: src/libvlc-module.c
+msgid ""
+"How the video holds its two views. Automatic takes the stream's own "
+"mark, then the 3D tag of the file name, then the frame's shape; the "
+"other choices override them, and Not 3D shows the video as it is."
+msgstr "视频存放两个视图的方式。“自动”依次采用流自身的标记、文件名中的 3D 标签和画面的形状；其他选项优先于它们，“非 3D”按原样显示视频。"
+
+#: src/libvlc-module.c
+msgid "Not 3D"
+msgstr "非 3D"
+
+#: src/libvlc-module.c
+msgid "Side by side"
+msgstr "左右并排"
+
+#: src/libvlc-module.c
+msgid "Side by side, right eye first"
+msgstr "左右并排，右眼在先"
+
+#: src/libvlc-module.c
+msgid "Top and bottom"
+msgstr "上下排列"
+
+#: src/libvlc-module.c
+msgid "Top and bottom, right eye first"
+msgstr "上下排列，右眼在先"
+
+#: src/libvlc-module.c
+msgid "Row interleaved"
+msgstr "行交错"
+
+#: src/libvlc-module.c
+msgid "Row interleaved, right eye first"
+msgstr "行交错，右眼在先"
+
+#: src/libvlc-module.c
+msgid "Column interleaved"
+msgstr "列交错"
+
+#: src/libvlc-module.c
+msgid "Column interleaved, right eye first"
+msgstr "列交错，右眼在先"
+
+#: src/libvlc-module.c
+msgid "Checkerboard"
+msgstr "棋盘格"
+
+#: src/libvlc-module.c
+msgid "Checkerboard, right eye first"
+msgstr "棋盘格，右眼在先"
+
+#: src/libvlc-module.c
+msgid "Frame sequential"
+msgstr "帧序列"
+
+#: src/libvlc-module.c
+msgid "Frame sequential, right eye first"
+msgstr "帧序列，右眼在先"
+
+#: src/libvlc-module.c
+msgid "Swap the eyes of a 3D video"
+msgstr "交换 3D 视频的左右眼"
+
+#: src/libvlc-module.c
+msgid ""
+"Show the left view to the right eye and the right view to the left "
+"eye, for a video whose mark has them the wrong way round."
+msgstr "将左视图显示给右眼、右视图显示给左眼，用于标记中左右颠倒的视频。"

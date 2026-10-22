@@ -29766,3 +29766,82 @@ msgstr "AAAA; "
 #: modules/gui/qt/ui/vlm.h:299
 msgid "Media Manager List"
 msgstr "Lista menedżera mediów"
+
+#: src/libvlc-module.c
+msgid "3D packing of the video"
+msgstr "Układ 3D wideo"
+
+#: src/libvlc-module.c
+msgid ""
+"How the video holds its two views. Automatic takes the stream's own "
+"mark, then the 3D tag of the file name, then the frame's shape; the "
+"other choices override them, and Not 3D shows the video as it is."
+msgstr ""
+"Jak wideo przechowuje swoje dwa widoki. Automatycznie: najpierw "
+"oznaczenie w samym strumieniu, potem znacznik 3D w nazwie pliku, "
+"potem kształt klatki; pozostałe opcje mają pierwszeństwo przed nimi, "
+"a Nie 3D pokazuje wideo bez zmian."
+
+#: src/libvlc-module.c
+msgid "Not 3D"
+msgstr "Nie 3D"
+
+#: src/libvlc-module.c
+msgid "Side by side"
+msgstr "Obok siebie"
+
+#: src/libvlc-module.c
+msgid "Side by side, right eye first"
+msgstr "Obok siebie, najpierw prawe oko"
+
+#: src/libvlc-module.c
+msgid "Top and bottom"
+msgstr "Góra i dół"
+
+#: src/libvlc-module.c
+msgid "Top and bottom, right eye first"
+msgstr "Góra i dół, najpierw prawe oko"
+
+#: src/libvlc-module.c
+msgid "Row interleaved"
+msgstr "Przeplot wierszy"
+
+#: src/libvlc-module.c
+msgid "Row interleaved, right eye first"
+msgstr "Przeplot wierszy, najpierw prawe oko"
+
+#: src/libvlc-module.c
+msgid "Column interleaved"
+msgstr "Przeplot kolumn"
+
+#: src/libvlc-module.c
+msgid "Column interleaved, right eye first"
+msgstr "Przeplot kolumn, najpierw prawe oko"
+
+#: src/libvlc-module.c
+msgid "Checkerboard"
+msgstr "Szachownica"
+
+#: src/libvlc-module.c
+msgid "Checkerboard, right eye first"
+msgstr "Szachownica, najpierw prawe oko"
+
+#: src/libvlc-module.c
+msgid "Frame sequential"
+msgstr "Klatki naprzemienne"
+
+#: src/libvlc-module.c
+msgid "Frame sequential, right eye first"
+msgstr "Klatki naprzemienne, najpierw prawe oko"
+
+#: src/libvlc-module.c
+msgid "Swap the eyes of a 3D video"
+msgstr "Zamień oczy wideo 3D"
+
+#: src/libvlc-module.c
+msgid ""
+"Show the left view to the right eye and the right view to the left "
+"eye, for a video whose mark has them the wrong way round."
+msgstr ""
+"Pokazuje lewy widok prawemu oku, a prawy widok lewemu oku, dla wideo, "
+"którego oznaczenie podaje je odwrotnie."

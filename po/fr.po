@@ -29997,3 +29997,82 @@ msgstr "AAAA; "
 #: modules/gui/qt/ui/vlm.h:299
 msgid "Media Manager List"
 msgstr "Liste du gestionnaire de médias"
+
+#: src/libvlc-module.c
+msgid "3D packing of the video"
+msgstr "Disposition 3D de la vidéo"
+
+#: src/libvlc-module.c
+msgid ""
+"How the video holds its two views. Automatic takes the stream's own "
+"mark, then the 3D tag of the file name, then the frame's shape; the "
+"other choices override them, and Not 3D shows the video as it is."
+msgstr ""
+"Comment la vidéo contient ses deux vues. Automatique suit la marque "
+"du flux lui-même, puis l’étiquette 3D du nom du fichier, puis la "
+"forme de l’image ; les autres choix ont la priorité sur eux, et Pas "
+"en 3D affiche la vidéo telle quelle."
+
+#: src/libvlc-module.c
+msgid "Not 3D"
+msgstr "Pas en 3D"
+
+#: src/libvlc-module.c
+msgid "Side by side"
+msgstr "Côte à côte"
+
+#: src/libvlc-module.c
+msgid "Side by side, right eye first"
+msgstr "Côte à côte, œil droit en premier"
+
+#: src/libvlc-module.c
+msgid "Top and bottom"
+msgstr "Haut et bas"
+
+#: src/libvlc-module.c
+msgid "Top and bottom, right eye first"
+msgstr "Haut et bas, œil droit en premier"
+
+#: src/libvlc-module.c
+msgid "Row interleaved"
+msgstr "Lignes entrelacées"
+
+#: src/libvlc-module.c
+msgid "Row interleaved, right eye first"
+msgstr "Lignes entrelacées, œil droit en premier"
+
+#: src/libvlc-module.c
+msgid "Column interleaved"
+msgstr "Colonnes entrelacées"
+
+#: src/libvlc-module.c
+msgid "Column interleaved, right eye first"
+msgstr "Colonnes entrelacées, œil droit en premier"
+
+#: src/libvlc-module.c
+msgid "Checkerboard"
+msgstr "Damier"
+
+#: src/libvlc-module.c
+msgid "Checkerboard, right eye first"
+msgstr "Damier, œil droit en premier"
+
+#: src/libvlc-module.c
+msgid "Frame sequential"
+msgstr "Images alternées"
+
+#: src/libvlc-module.c
+msgid "Frame sequential, right eye first"
+msgstr "Images alternées, œil droit en premier"
+
+#: src/libvlc-module.c
+msgid "Swap the eyes of a 3D video"
+msgstr "Inverser les yeux d’une vidéo 3D"
+
+#: src/libvlc-module.c
+msgid ""
+"Show the left view to the right eye and the right view to the left "
+"eye, for a video whose mark has them the wrong way round."
+msgstr ""
+"Montre la vue gauche à l’œil droit et la vue droite à l’œil gauche, "
+"pour une vidéo dont la marque les donne inversées."
