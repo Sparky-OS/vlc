@@ -530,22 +530,13 @@ static char *StereoFileName( decoder_t *p_dec )
 }
 
 /* The correction the user stored with a local file whose eyes are the wrong
- * way round. */
+ * way round, as it was when the input opened: a correction made while it
+ * plays is the video output's to show. */
 static bool StereoFileSwap( decoder_t *p_dec )
 {
     input_thread_t *p_input = p_dec->p_owner->p_input;
-    input_item_t *p_item = p_input != NULL ? input_GetItem( p_input ) : NULL;
 
-    if( p_item == NULL || p_item->psz_uri == NULL )
-        return false;
-
-    char *psz_path = vlc_uri2path( p_item->psz_uri );
-    if( psz_path == NULL )
-        return false;
-
-    bool b_swap = stereo_policy_file_swap_eyes( psz_path ) == 1;
-    free( psz_path );
-    return b_swap;
+    return p_input != NULL && var_GetBool( p_input, "stereo-file-swap" );
 }
 
 /**

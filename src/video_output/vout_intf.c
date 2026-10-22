@@ -41,6 +41,9 @@
 #include <vlc_vout_osd.h>
 #include <vlc_strings.h>
 #include <vlc_charset.h>
+#ifdef HAVE_STEREO_POLICY
+# include <stereo-policy.h>
+#endif
 #include "vout_internal.h"
 
 /*****************************************************************************
@@ -75,6 +78,8 @@ static int SubMarginCallback( vlc_object_t *, char const *,
                               vlc_value_t, vlc_value_t, void * );
 static int ViewpointCallback( vlc_object_t *, char const *,
                               vlc_value_t, vlc_value_t, void * );
+static int StereoSwapCallback( vlc_object_t *, char const *,
+                               vlc_value_t, vlc_value_t, void * );
 
 /*****************************************************************************
  * vout_IntfInit: called during the vout creation to initialise misc things.
@@ -163,11 +168,16 @@ void vout_IntfInit( vout_thread_t *p_vout )
     var_Create( p_vout, "mouse-hide-timeout",
                 VLC_VAR_INTEGER | VLC_VAR_DOINHERIT );
 
-    /* The eye order of a 3D video, corrected for this video. The format
-     * of the compositor's output is not changed. */
+    /* The eye order of a 3D video, corrected for the file and kept with it
+     * (stereo-swap-eyes), over the correction the decoder already applied
+     * when the input opened (stereo-swap-eyes-base). The format of the
+     * compositor's output is not changed. */
     var_Create( p_vout, "stereo-swap-eyes", VLC_VAR_BOOL | VLC_VAR_ISCOMMAND );
+    var_Create( p_vout, "stereo-swap-eyes-base", VLC_VAR_BOOL );
+    var_Create( p_vout, "stereo-file-path", VLC_VAR_STRING );
     text.psz_string = _("Swap left and right eyes");
     var_Change( p_vout, "stereo-swap-eyes", VLC_VAR_SETTEXT, &text, NULL );
+    var_AddCallback( p_vout, "stereo-swap-eyes", StereoSwapCallback, NULL );
 
     /* Add variables to manage scaling video */
     var_Create( p_vout, "autoscale", VLC_VAR_BOOL | VLC_VAR_DOINHERIT
@@ -315,6 +325,54 @@ void vout_IntfInit( vout_thread_t *p_vout )
     var_Create( p_vout, "viewpoint-changeable", VLC_VAR_BOOL );
 
     vout_IntfReinit( p_vout );
+}
+
+/**
+ * Gives the video output the eye correction of the input it now shows: the
+ * one stored with its file, as the decoder applied it, never the previous
+ * input's.
+ */
+void vout_IntfBindInput( vout_thread_t *p_vout, vlc_object_t *p_input )
+{
+    char *psz_path = p_input != NULL ? var_GetString( p_input, "stereo-file-path" ) : NULL;
+    bool b_swap = p_input != NULL && var_GetBool( p_input, "stereo-file-swap" );
+
+    /* Binding another input must never store its correction with the old file */
+    var_DelCallback( p_vout, "stereo-swap-eyes", StereoSwapCallback, NULL );
+    var_SetString( p_vout, "stereo-file-path", psz_path != NULL ? psz_path : "" );
+    var_SetBool( p_vout, "stereo-swap-eyes-base", b_swap );
+    var_SetBool( p_vout, "stereo-swap-eyes", b_swap );
+    var_AddCallback( p_vout, "stereo-swap-eyes", StereoSwapCallback, NULL );
+    free( psz_path );
+}
+
+/* Stores the user's eye correction with the file, as the shared stereo policy
+ * does (the extended attribute user.stereo-policy.swap-eyes), without
+ * rewriting the file. A file that cannot keep it (read-only, remote, or on a
+ * file system without extended attributes) keeps the correction for this
+ * playback, and the user is told. */
+static int StereoSwapCallback( vlc_object_t *p_this, char const *psz_name,
+                               vlc_value_t oldval, vlc_value_t newval, void *p_data )
+{
+    VLC_UNUSED( psz_name ); VLC_UNUSED( p_data );
+    if( oldval.b_bool == newval.b_bool )
+        return VLC_SUCCESS;
+
+    vout_thread_t *p_vout = (vout_thread_t *)p_this;
+    char *psz_path = var_GetString( p_vout, "stereo-file-path" );
+    int i_ret = -1;
+#ifdef HAVE_STEREO_POLICY
+    if( psz_path != NULL && *psz_path != '\0' )
+        i_ret = stereo_policy_set_file_swap_eyes( psz_path, newval.b_bool );
+#endif
+    if( i_ret != 0 )
+    {
+        msg_Warn( p_vout, "could not store eye correction for this input" );
+        vout_OSDMessage( p_vout, VOUT_SPU_CHANNEL_OSD, "%s",
+            _("Eye order could not be saved for this file; the correction applies to this playback only.") );
+    }
+    free( psz_path );
+    return VLC_SUCCESS;
 }
 
 void vout_IntfReinit( vout_thread_t *p_vout )

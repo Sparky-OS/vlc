@@ -1997,9 +1997,12 @@ int vout_display_opengl_Display(vout_display_opengl_t *vgl,
     }
 
     /* Read once for both views, so that a change cannot give both eyes the
-     * same view */
+     * same view. The decoder already applied the correction stored with the
+     * file when the input opened (stereo-swap-eyes-base): show the
+     * difference. */
     const bool swap_eyes = stereo
-                        && var_InheritBool(vgl->gl, "stereo-swap-eyes");
+        && var_InheritBool(vgl->gl, "stereo-swap-eyes")
+           != var_InheritBool(vgl->gl, "stereo-swap-eyes-base");
     for (unsigned eye = 0; eye < (stereo ? 2 : 1); eye++)
     {
         int ret = DisplayView(vgl, source, eye, swap_eyes);
