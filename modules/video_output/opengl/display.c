@@ -223,6 +223,31 @@ static void DeclareStereo (vout_display_t *vd, vout_window_t *surface)
     else
         XCloseDisplay (x11);
 }
+
+/**
+ * Takes back the declaration of the video window.
+ */
+static void RemoveStereo (vout_display_sys_t *sys, vout_window_t *surface)
+{
+    if (sys->x11 != NULL)
+    {
+        stereo_remove_x11 (sys->x11, surface->handle.xid);
+        XCloseDisplay (sys->x11);
+        sys->x11 = NULL;
+    }
+# ifdef VLC_GL_WAYLAND
+    if (sys->stereo_queue != NULL)
+    {
+        wp_viewport_destroy(sys->viewport);
+        stereo_remove_wayland(surface->handle.wl);
+        stereo_declare_wayland_finish();
+        wl_event_queue_destroy(sys->stereo_queue);
+        sys->stereo_queue = NULL;
+        sys->viewport = NULL;
+    }
+# endif
+    sys->stereo = false;
+}
 #endif
 
 /* Display callbacks */
@@ -230,6 +255,10 @@ static picture_pool_t *Pool (vout_display_t *, unsigned);
 static void PictureRender (vout_display_t *, picture_t *, subpicture_t *);
 static void PictureDisplay (vout_display_t *, picture_t *, subpicture_t *);
 static int Control (vout_display_t *, int, va_list);
+static int ChangeDisplay (vout_display_t *, const vout_display_cfg_t *);
+static void PlaceOnDisplay (vout_display_t *, const vout_display_cfg_t *,
+                            vout_display_place_t *, float *,
+                            unsigned *, unsigned *, int *);
 
 /**
  * Allocates a surface and an OpenGL context for video output.
@@ -289,7 +318,19 @@ static int Open (vlc_object_t *obj)
     if (sys->gl == NULL)
         goto error;
 
-    vlc_gl_Resize (sys->gl, vd->cfg->display.width, vd->cfg->display.height);
+    vd->sys = sys;
+#ifdef HAVE_STEREO_DECLARE
+    DeclareStereo (vd, surface);
+#endif
+    /* The surface has its size before its first buffer is drawn, and the
+     * views of a stereoscopic video their own resolution from the first
+     * picture */
+    vout_display_place_t place;
+    float aspect;
+    unsigned width, height;
+    int stride;
+    PlaceOnDisplay (vd, vd->cfg, &place, &aspect, &width, &height, &stride);
+    vlc_gl_Resize (sys->gl, width, height);
 
     /* Initialize video display */
     const vlc_fourcc_t *spu_chromas;
@@ -304,17 +345,8 @@ static int Open (vlc_object_t *obj)
     if (sys->vgl == NULL)
         goto error;
 
-    vd->sys = sys;
-#ifdef HAVE_STEREO_DECLARE
-    DeclareStereo (vd, surface);
-# ifdef VLC_GL_WAYLAND
-    SetViewSize(sys, vd->cfg->display.width, vd->cfg->display.height);
-# endif
-    vlc_gl_Resize(sys->gl, vd->cfg->display.width * (sys->stereo ? 2 : 1),
-                  vd->cfg->display.height);
-    vout_display_opengl_SetViewStride(sys->vgl,
-                                      sys->stereo ? vd->cfg->display.width : 0);
-#endif
+    if (ChangeDisplay (vd, vd->cfg) != VLC_SUCCESS)
+        msg_Warn (vd, "cannot set the place of the picture yet");
     vd->info.has_pictures_invalid = false;
     vd->info.subpicture_chromas = spu_chromas;
     vd->pool = Pool;
@@ -324,6 +356,10 @@ static int Open (vlc_object_t *obj)
     return VLC_SUCCESS;
 
 error:
+#ifdef HAVE_STEREO_DECLARE
+    if (surface != NULL)
+        RemoveStereo (sys, surface);
+#endif
     if (sys->gl != NULL)
         vlc_gl_Release (sys->gl);
     if (surface != NULL)
@@ -343,20 +379,7 @@ static void Close (vlc_object_t *obj)
     vout_window_t *surface = gl->surface;
 
 #ifdef HAVE_STEREO_DECLARE
-    if (sys->x11 != NULL)
-    {
-        stereo_remove_x11 (sys->x11, surface->handle.xid);
-        XCloseDisplay (sys->x11);
-    }
-# ifdef VLC_GL_WAYLAND
-    if (sys->stereo_queue != NULL)
-    {
-        wp_viewport_destroy(sys->viewport);
-        stereo_remove_wayland(surface->handle.wl);
-        stereo_declare_wayland_finish();
-        wl_event_queue_destroy(sys->stereo_queue);
-    }
-# endif
+    RemoveStereo (sys, surface);
 #endif
 
     vlc_gl_MakeCurrent (gl);
@@ -463,6 +486,63 @@ static void PlaceOnSurface(vout_display_t *vd, const vout_display_cfg_t *cfg,
 }
 #endif
 
+/**
+ * Sizes the surface, its viewport and the place of the picture for a display
+ * configuration.
+ */
+/**
+ * The place of the picture for a display configuration, the aspect ratio of
+ * that place, and the size of the surface (see PlaceOnSurface).
+ */
+static void PlaceOnDisplay (vout_display_t *vd, const vout_display_cfg_t *cfg,
+                            vout_display_place_t *place, float *aspect,
+                            unsigned *width, unsigned *height, int *stride)
+{
+    vout_display_cfg_t c = *cfg;
+
+    /* Reverse vertical alignment as the GL tex are Y inverted */
+    if (c.align.vertical == VOUT_DISPLAY_ALIGN_TOP)
+        c.align.vertical = VOUT_DISPLAY_ALIGN_BOTTOM;
+    else if (c.align.vertical == VOUT_DISPLAY_ALIGN_BOTTOM)
+        c.align.vertical = VOUT_DISPLAY_ALIGN_TOP;
+
+    vout_display_PlacePicture (place, &vd->source, &c, false);
+    *aspect = (float)place->width / place->height;
+    *width = c.display.width;
+    *height = c.display.height;
+    *stride = 0;
+#ifdef HAVE_STEREO_DECLARE
+    PlaceOnSurface(vd, &c, place, width, height, stride);
+#endif
+}
+
+static int ChangeDisplay (vout_display_t *vd, const vout_display_cfg_t *cfg)
+{
+    vout_display_sys_t *sys = vd->sys;
+    vout_display_place_t place;
+    float aspect;
+    unsigned width, height;
+    int stride;
+
+    PlaceOnDisplay (vd, cfg, &place, &aspect, &width, &height, &stride);
+#if defined(HAVE_STEREO_DECLARE) && defined(VLC_GL_WAYLAND)
+    SetViewSize(sys, cfg->display.width, cfg->display.height);
+#endif
+    vlc_gl_Resize (sys->gl, width, height);
+    if (vlc_gl_MakeCurrent (sys->gl) != VLC_SUCCESS)
+        return VLC_EGENERIC;
+    vout_display_opengl_SetWindowAspectRatio(sys->vgl, aspect);
+    vout_display_opengl_Viewport(sys->vgl, place.x, place.y, place.width, place.height);
+#ifdef HAVE_STEREO_DECLARE
+    /* The second view is in the second half of the declared window */
+    vout_display_opengl_SetViewStride(sys->vgl, stride);
+#else
+    VLC_UNUSED(stride);
+#endif
+    vlc_gl_ReleaseCurrent (sys->gl);
+    return VLC_SUCCESS;
+}
+
 static int Control (vout_display_t *vd, int query, va_list ap)
 {
     vout_display_sys_t *sys = vd->sys;
@@ -477,39 +557,7 @@ static int Control (vout_display_t *vd, int query, va_list ap)
       case VOUT_DISPLAY_CHANGE_DISPLAY_SIZE:
       case VOUT_DISPLAY_CHANGE_DISPLAY_FILLED:
       case VOUT_DISPLAY_CHANGE_ZOOM:
-      {
-        vout_display_cfg_t c = *va_arg (ap, const vout_display_cfg_t *);
-        const video_format_t *src = &vd->source;
-        vout_display_place_t place;
-
-        /* Reverse vertical alignment as the GL tex are Y inverted */
-        if (c.align.vertical == VOUT_DISPLAY_ALIGN_TOP)
-            c.align.vertical = VOUT_DISPLAY_ALIGN_BOTTOM;
-        else if (c.align.vertical == VOUT_DISPLAY_ALIGN_BOTTOM)
-            c.align.vertical = VOUT_DISPLAY_ALIGN_TOP;
-
-        vout_display_PlacePicture (&place, src, &c, false);
-        unsigned width = c.display.width, height = c.display.height;
-        const float aspect = (float)place.width / place.height;
-#ifdef HAVE_STEREO_DECLARE
-        int stride;
-        PlaceOnSurface(vd, &c, &place, &width, &height, &stride);
-# ifdef VLC_GL_WAYLAND
-        SetViewSize(sys, c.display.width, c.display.height);
-# endif
-#endif
-        vlc_gl_Resize (sys->gl, width, height);
-        if (vlc_gl_MakeCurrent (sys->gl) != VLC_SUCCESS)
-            return VLC_EGENERIC;
-        vout_display_opengl_SetWindowAspectRatio(sys->vgl, aspect);
-        vout_display_opengl_Viewport(sys->vgl, place.x, place.y, place.width, place.height);
-#ifdef HAVE_STEREO_DECLARE
-        /* The second view is in the second half of the declared window */
-        vout_display_opengl_SetViewStride(sys->vgl, stride);
-#endif
-        vlc_gl_ReleaseCurrent (sys->gl);
-        return VLC_SUCCESS;
-      }
+        return ChangeDisplay (vd, va_arg (ap, const vout_display_cfg_t *));
 
       case VOUT_DISPLAY_CHANGE_SOURCE_ASPECT:
       case VOUT_DISPLAY_CHANGE_SOURCE_CROP:
