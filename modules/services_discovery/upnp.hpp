@@ -35,11 +35,11 @@
 
 #include <vlc_common.h>
 
-#if UPNP_VERSION < 10800
-typedef void* UpnpEventPtr;
-#else
-typedef const void* UpnpEventPtr;
-#endif
+/* libupnp changed the constness of the event pointer between releases:
+ * take it from Upnp_FunPtr itself. */
+template <typename R, typename T, typename E, typename C>
+E UpnpEventPtrOf( R (*)( T, E, C ) );
+typedef decltype( UpnpEventPtrOf( static_cast<Upnp_FunPtr>( nullptr ) ) ) UpnpEventPtr;
 
 namespace SD
 {
