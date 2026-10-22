@@ -90,6 +90,11 @@ struct picture_t
     bool            b_progressive;          /**< is it a progressive frame ? */
     bool            b_top_field_first;             /**< which field is first */
     unsigned int    i_nb_fields;                  /**< # of displayed fields */
+    /** Which constituent frame of a frame sequential stereoscopic stream the
+     * picture is, as the stream marks it (current_frame_is_frame0_flag of
+     * the frame packing arrangement SEI, H.264 D.2.26, H.265 D.3.16):
+     * 0 when nothing says, 1 for frame 0, 2 for frame 1 */
+    uint8_t         i_stereo_frame;
     picture_context_t *context;      /**< video format-specific data pointer */
     /**@}*/
 
