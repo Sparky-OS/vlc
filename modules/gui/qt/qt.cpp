@@ -353,6 +353,12 @@ static void *ThreadPlatform( void *, char * );
 
 static void *Thread( void *data )
 {
+#ifdef QT_VLC_WAYLAND
+    char platform_name[] = "wayland";
+    if( qEnvironmentVariableIsEmpty("QT_QPA_PLATFORM") &&
+        !qEnvironmentVariableIsEmpty("WAYLAND_DISPLAY") )
+        return ThreadPlatform(data, platform_name);
+#endif
     return ThreadPlatform( data, NULL );
 }
 
@@ -454,10 +460,19 @@ static int Open( vlc_object_t *p_this, bool isDialogProvider )
     void *(*thread)(void *) = Thread;
 
 #ifdef QT_HAS_X11
+#ifdef QT_VLC_WAYLAND
+    /* Honour an explicitly selected platform; use native embedding in a
+     * Wayland session instead of unconditionally forcing Xwayland. */
+    if( !(qgetenv("QT_QPA_PLATFORM").startsWith("wayland") ||
+          (qEnvironmentVariableIsEmpty("QT_QPA_PLATFORM") &&
+           !qEnvironmentVariableIsEmpty("WAYLAND_DISPLAY"))) )
+#endif
+    {
     if( HasX11( p_this ) )
         thread = ThreadXCB;
     else
         return VLC_EGENERIC;
+    }
 #endif
 
     QMutexLocker locker (&lock);
@@ -640,7 +655,7 @@ static void *ThreadPlatform( void *obj, char *platform_name )
         QString platform = app.platformName();
         if( platform == qfu("xcb") )
             p_sys->voutWindowType = VOUT_WINDOW_TYPE_XID;
-        else if( platform == qfu("wayland") )
+        else if( platform.startsWith(qfu("wayland")) )
             p_sys->voutWindowType = VOUT_WINDOW_TYPE_WAYLAND;
         else if( platform == qfu("windows") )
             p_sys->voutWindowType = VOUT_WINDOW_TYPE_HWND;

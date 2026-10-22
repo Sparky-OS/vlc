@@ -43,6 +43,9 @@ endif
 
 if HAVE_QT_GUI_PRIVATE
 libqt_plugin_la_CPPFLAGS += -DQT_GUI_PRIVATE $(QT_GUI_PRIVATE_CFLAGS)
+if HAVE_WAYLAND
+libqt_plugin_la_CPPFLAGS += -DQT_VLC_WAYLAND
+endif
 endif
 
 libqt_plugin_la_SOURCES = \

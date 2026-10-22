@@ -83,9 +83,9 @@ static void Resize (vlc_gl_t *gl, unsigned width, unsigned height)
 {
     vlc_gl_sys_t *sys = gl->sys;
 
-    wl_egl_window_resize(sys->window, width, height,
-                         (sys->width - width) / 2,
-                         (sys->height - height) / 2);
+    /* The Qt container positions this child; buffer resizing must not attach
+     * it at a negative offset (particularly when adding the second eye). */
+    wl_egl_window_resize(sys->window, width, height, 0, 0);
     sys->width = width;
     sys->height = height;
 }

@@ -64,6 +64,7 @@ public:
     void sync( void );
 
 protected:
+    bool eventFilter(QObject *, QEvent *) Q_DECL_OVERRIDE;
     QPaintEngine *paintEngine() const Q_DECL_OVERRIDE
     {
         return NULL;

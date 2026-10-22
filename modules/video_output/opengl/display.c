@@ -34,6 +34,10 @@
 #ifdef HAVE_STEREO_DECLARE
 # include <vlc_xlib.h>
 # include <stereo-declare.h>
+# ifdef VLC_GL_WAYLAND
+#  include <wayland-client.h>
+#  include "../wayland/viewporter-client-protocol.h"
+# endif
 #endif
 #include "vout_helper.h"
 
@@ -82,10 +86,46 @@ struct vout_display_sys_t
     picture_pool_t *pool;
 #ifdef HAVE_STEREO_DECLARE
     Display *x11; /* connection the video window is declared with, if any */
+# ifdef VLC_GL_WAYLAND
+    struct wl_event_queue *stereo_queue;
+    struct wp_viewport *viewport;
+# endif
+    bool stereo;
 #endif
 };
 
 #ifdef HAVE_STEREO_DECLARE
+#ifdef VLC_GL_WAYLAND
+static void ViewporterGlobal(void *data, struct wl_registry *registry,
+                             uint32_t name, const char *interface, uint32_t version)
+{
+    (void)version;
+    if (strcmp(interface, "wp_viewporter") == 0)
+        *(struct wp_viewporter **)data = wl_registry_bind(registry, name,
+                                             &wp_viewporter_interface, 1);
+}
+
+static void ViewporterRemoved(void *data, struct wl_registry *registry, uint32_t name)
+{
+    (void)data; (void)registry; (void)name;
+}
+
+static void SetViewSize(vout_display_sys_t *sys, unsigned width, unsigned height)
+{
+    if (sys->viewport == NULL)
+        return;
+    float scale = var_GetFloat(sys->gl->surface, "qt-wayland-scale");
+    if (scale <= 0.f)
+        scale = 1.f;
+    /* wl_buffer has two full views; the subsurface occupies one logical view.
+     * Without this destination KWin clips a double-width child to its parent. */
+    int logical_width = width / scale + .5f;
+    int logical_height = height / scale + .5f;
+    wp_viewport_set_destination(sys->viewport,
+        logical_width > 0 ? logical_width : 1,
+        logical_height > 0 ? logical_height : 1);
+}
+#endif
 /**
  * Declares the video window to the compositor as full side by side stereo
  * content, left eye first, while a stereoscopic video plays. The compositor
@@ -107,6 +147,64 @@ static void DeclareStereo (vout_display_t *vd, vout_window_t *surface)
             return;
     }
 
+#ifdef VLC_GL_WAYLAND
+    if (surface->type == VOUT_WINDOW_TYPE_WAYLAND)
+    {
+        /* Only dispatch our own registry events on the video thread. Qt keeps
+         * ownership of its display and default event queue. */
+        struct wl_event_queue *queue = wl_display_create_queue(surface->display.wl);
+        if (queue == NULL)
+            return;
+        if (stereo_declare_wayland_init(surface->display.wl, queue) != 0)
+        {
+            wl_event_queue_destroy(queue);
+            return;
+        }
+        struct wp_viewporter *viewporter = NULL;
+        struct wl_display *wrapper = wl_proxy_create_wrapper(surface->display.wl);
+        if (wrapper == NULL)
+        {
+            stereo_declare_wayland_finish();
+            wl_event_queue_destroy(queue);
+            return;
+        }
+        wl_proxy_set_queue((struct wl_proxy *)wrapper, queue);
+        struct wl_registry *registry = wl_display_get_registry(wrapper);
+        wl_proxy_wrapper_destroy(wrapper);
+        if (registry == NULL)
+        {
+            stereo_declare_wayland_finish();
+            wl_event_queue_destroy(queue);
+            return;
+        }
+        static const struct wl_registry_listener listener = {
+            ViewporterGlobal, ViewporterRemoved
+        };
+        wl_registry_add_listener(registry, &listener, &viewporter);
+        if (wl_display_roundtrip_queue(surface->display.wl, queue) >= 0
+         && viewporter != NULL
+         && (sys->viewport = wp_viewporter_get_viewport(viewporter, surface->handle.wl)) != NULL
+         && stereo_declare_wayland(surface->handle.wl, STEREO_SBS_FULL,
+                                  STEREO_CLASS_VIDEO, STEREO_VIDEO_CURRENT) == 0)
+        {
+            sys->stereo_queue = queue;
+            sys->stereo = true;
+        }
+        else
+        {
+            if (sys->viewport != NULL)
+                wp_viewport_destroy(sys->viewport);
+            sys->viewport = NULL;
+            stereo_declare_wayland_finish();
+        }
+        if (viewporter != NULL)
+            wp_viewporter_destroy(viewporter);
+        wl_registry_destroy(registry);
+        if (!sys->stereo)
+            wl_event_queue_destroy(queue);
+        return;
+    }
+#endif
     if (surface->type != VOUT_WINDOW_TYPE_XID || !vlc_xlib_init (VLC_OBJECT(vd)))
         return;
 
@@ -117,7 +215,10 @@ static void DeclareStereo (vout_display_t *vd, vout_window_t *surface)
     if (stereo_supported_x11 (x11) >= 3
      && stereo_declare_x11 (x11, surface->handle.xid, STEREO_SBS_FULL,
                             STEREO_CLASS_VIDEO, STEREO_VIDEO_CURRENT) == 0)
+    {
         sys->x11 = x11;
+        sys->stereo = true;
+    }
     else
         XCloseDisplay (x11);
 }
@@ -143,6 +244,11 @@ static int Open (vlc_object_t *obj)
     sys->pool = NULL;
 #ifdef HAVE_STEREO_DECLARE
     sys->x11 = NULL;
+    sys->stereo = false;
+# ifdef VLC_GL_WAYLAND
+    sys->stereo_queue = NULL;
+    sys->viewport = NULL;
+# endif
 #endif
 
     vout_window_t *surface = vout_display_NewWindow (vd, VOUT_WINDOW_TYPE_INVALID);
@@ -200,6 +306,13 @@ static int Open (vlc_object_t *obj)
     vd->sys = sys;
 #ifdef HAVE_STEREO_DECLARE
     DeclareStereo (vd, surface);
+# ifdef VLC_GL_WAYLAND
+    SetViewSize(sys, vd->cfg->display.width, vd->cfg->display.height);
+# endif
+    vlc_gl_Resize(sys->gl, vd->cfg->display.width * (sys->stereo ? 2 : 1),
+                  vd->cfg->display.height);
+    vout_display_opengl_SetViewStride(sys->vgl,
+                                      sys->stereo ? vd->cfg->display.width : 0);
 #endif
     vd->info.has_pictures_invalid = false;
     vd->info.subpicture_chromas = spu_chromas;
@@ -234,6 +347,15 @@ static void Close (vlc_object_t *obj)
         stereo_remove_x11 (sys->x11, surface->handle.xid);
         XCloseDisplay (sys->x11);
     }
+# ifdef VLC_GL_WAYLAND
+    if (sys->stereo_queue != NULL)
+    {
+        wp_viewport_destroy(sys->viewport);
+        stereo_remove_wayland(surface->handle.wl);
+        stereo_declare_wayland_finish();
+        wl_event_queue_destroy(sys->stereo_queue);
+    }
+# endif
 #endif
 
     vlc_gl_MakeCurrent (gl);
@@ -312,7 +434,14 @@ static int Control (vout_display_t *vd, int query, va_list ap)
             c.align.vertical = VOUT_DISPLAY_ALIGN_TOP;
 
         vout_display_PlacePicture (&place, src, &c, false);
-        vlc_gl_Resize (sys->gl, place.width, place.height);
+        unsigned width = c.display.width;
+#ifdef HAVE_STEREO_DECLARE
+        width *= sys->stereo ? 2 : 1;
+# ifdef VLC_GL_WAYLAND
+        SetViewSize(sys, c.display.width, c.display.height);
+# endif
+#endif
+        vlc_gl_Resize (sys->gl, width, c.display.height);
         if (vlc_gl_MakeCurrent (sys->gl) != VLC_SUCCESS)
             return VLC_EGENERIC;
         vout_display_opengl_SetWindowAspectRatio(sys->vgl, (float)place.width / place.height);
@@ -320,7 +449,7 @@ static int Control (vout_display_t *vd, int query, va_list ap)
 #ifdef HAVE_STEREO_DECLARE
         /* The second view is in the second half of the declared window */
         vout_display_opengl_SetViewStride(sys->vgl,
-                                          sys->x11 != NULL ? c.display.width : 0);
+                                          sys->stereo ? c.display.width : 0);
 #endif
         vlc_gl_ReleaseCurrent (sys->gl);
         return VLC_SUCCESS;

@@ -3946,6 +3946,12 @@ AS_IF([test "${enable_qt}" != "no"], [
       QT_PATH="$(eval $PKG_CONFIG --variable=exec_prefix Qt5Core)"
       QT_HOST_PATH="$(eval $PKG_CONFIG --variable=host_bins Qt5Core)"
       QT_VERSION="$(eval $PKG_CONFIG --modversion Qt5Gui)"
+      qt5_headers="$($PKG_CONFIG --variable=includedir Qt5Gui)"
+      AS_IF([test -f "${qt5_headers}/QtGui/${QT_VERSION}/QtGui/qpa/qplatformnativeinterface.h"], [
+        QT_GUI_PRIVATE_CFLAGS="-I${qt5_headers}/QtGui/${QT_VERSION}/QtGui -I${qt5_headers}/QtGui/${QT_VERSION} -I${qt5_headers}/QtCore/${QT_VERSION}"
+        AC_SUBST([QT_GUI_PRIVATE_CFLAGS])
+        have_qt_gui_private="yes"
+      ])
       AC_PATH_PROGS(MOC, [moc-qt5 moc], moc, ["${QT_HOST_PATH}" "${QT_PATH}/bin"])
       AC_PATH_PROGS(RCC, [rcc-qt5 rcc], rcc, ["${QT_HOST_PATH}" "${QT_PATH}/bin"])
       AC_PATH_PROGS(UIC, [uic-qt5 uic], uic, ["${QT_HOST_PATH}" "${QT_PATH}/bin"])

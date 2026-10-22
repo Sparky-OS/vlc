@@ -54,13 +54,15 @@ static inline int qrand() {
 
 #if defined (QT_HAS_X11)
 # include <X11/Xlib.h>
+# undef KeyPress
+# undef KeyRelease
 # include "qt_x11.hpp"
 # if defined(QT_HAS_XCB)
 #  include <xcb/xproto.h>
 # endif
 #endif
 
-#if defined(_WIN32)
+#if defined(_WIN32) || defined(QT_VLC_WAYLAND)
 #include <QWindow>
 #include <qpa/qplatformnativeinterface.h>
 #endif
@@ -95,6 +97,7 @@ VideoWidget::~VideoWidget()
     /* Ensure we are not leaking the video output. This would crash. */
     assert( !stable );
     assert( !p_window );
+
 }
 
 void VideoWidget::sync( void )
@@ -119,6 +122,40 @@ bool VideoWidget::request( struct vout_window_t *p_wnd )
         return false;
     }
     assert( !p_window );
+
+#ifdef QT_VLC_WAYLAND
+    if( p_intf->p_sys->voutWindowType == VOUT_WINDOW_TYPE_WAYLAND )
+    {
+        /* A native child surface lets the compositor select each eye while
+         * keeping the surrounding Qt controls on their ordinary 2D surface.
+         * Qt owns the subsurface and its geometry, VLC owns its EGL buffers. */
+        QWindow *video = new QWindow;
+        video->setSurfaceType(QSurface::OpenGLSurface);
+        video->installEventFilter(this);
+        stable = QWidget::createWindowContainer(video, this);
+        stable->setFocusPolicy(Qt::StrongFocus);
+        layout->addWidget(stable);
+        stable->show();
+        video->create();
+        QPlatformNativeInterface *native = QGuiApplication::platformNativeInterface();
+        p_wnd->display.wl = static_cast<wl_display *>(
+            native->nativeResourceForIntegration("display"));
+        p_wnd->handle.wl = static_cast<wl_surface *>(
+            native->nativeResourceForWindow("surface", video));
+        if( !p_wnd->display.wl || !p_wnd->handle.wl )
+        {
+            delete stable;
+            stable = NULL;
+            return false;
+        }
+        p_wnd->type = VOUT_WINDOW_TYPE_WAYLAND;
+        var_Create(p_wnd, "qt-wayland-scale", VLC_VAR_FLOAT);
+        var_SetFloat(p_wnd, "qt-wayland-scale", devicePixelRatioF());
+        p_window = p_wnd;
+        enable_mouse_events = var_InheritBool(p_window, "mouse-events");
+        return true;
+    }
+#endif
 
     /* The owner of the video window needs a stable handle (WinId). Reparenting
      * in Qt4-X11 changes the WinId of the widget, so we need to create another
@@ -216,6 +253,10 @@ void VideoWidget::reportSize()
         return;
 
     QSize size = physicalSize();
+#ifdef QT_VLC_WAYLAND
+    if( p_window->type == VOUT_WINDOW_TYPE_WAYLAND )
+        var_SetFloat(p_window, "qt-wayland-scale", devicePixelRatioF());
+#endif
     WindowResized(p_window, size);
 }
 
@@ -282,6 +323,23 @@ void VideoWidget::resizeEvent( QResizeEvent *event )
         p_intf->p_sys->voutWindowType == VOUT_WINDOW_TYPE_HWND )
         return;
     reportSize();
+}
+
+bool VideoWidget::eventFilter(QObject *watched, QEvent *event)
+{
+    switch(event->type())
+    {
+        case QEvent::MouseButtonPress:
+        case QEvent::MouseButtonRelease:
+        case QEvent::MouseButtonDblClick:
+        case QEvent::MouseMove:
+        case QEvent::KeyPress:
+        case QEvent::KeyRelease:
+        case QEvent::Wheel:
+            return QCoreApplication::sendEvent(this, event);
+        default:
+            return QFrame::eventFilter(watched, event);
+    }
 }
 
 int VideoWidget::qtMouseButton2VLC( Qt::MouseButton qtButton )

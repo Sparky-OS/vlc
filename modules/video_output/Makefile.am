@@ -78,6 +78,14 @@ vout_LTLIBRARIES += $(LTLIBgles2)
 libgl_plugin_la_SOURCES = $(OPENGL_COMMONSOURCES) video_output/opengl/display.c
 libgl_plugin_la_CFLAGS = $(AM_CFLAGS) $(GL_CFLAGS) $(OPENGL_COMMONCLFAGS) $(STEREO_DECLARE_CFLAGS)
 libgl_plugin_la_LIBADD = $(LIBM) $(OPENGL_COMMONLIBS) $(STEREO_DECLARE_LIBS)
+if HAVE_WAYLAND
+nodist_libgl_plugin_la_SOURCES = video_output/wayland/viewporter-protocol.c video_output/wayland/viewporter-client-protocol.h
+nodist_libgles2_plugin_la_SOURCES = video_output/wayland/viewporter-protocol.c video_output/wayland/viewporter-client-protocol.h
+libgl_plugin_la_CFLAGS += $(WAYLAND_CLIENT_CFLAGS) -DVLC_GL_WAYLAND
+libgl_plugin_la_LIBADD += $(WAYLAND_CLIENT_LIBS)
+libgles2_plugin_la_CFLAGS += $(WAYLAND_CLIENT_CFLAGS) -DVLC_GL_WAYLAND
+libgles2_plugin_la_LIBADD += $(WAYLAND_CLIENT_LIBS)
+endif
 if HAVE_WIN32
 libgl_plugin_la_CFLAGS += -DHAVE_GL_CORE_SYMBOLS
 libgl_plugin_la_LIBADD += $(GL_LIBS)
