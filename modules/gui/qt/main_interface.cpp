@@ -840,7 +840,8 @@ void MainInterface::setVideoSize( unsigned int w, unsigned int h )
 #else
             float factor = 1.0f;
 #endif
-            if( (float)h / factor > screen.height() )
+            if( (float)h / factor > screen.height()
+             || (float)w / factor > screen.width() )
             {
                 w = screen.width();
                 h = screen.height();
