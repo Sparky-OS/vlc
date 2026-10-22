@@ -702,8 +702,14 @@ inline void MainInterface::showTab( QWidget *widget, bool video_closing )
     }
 
     stackCentralW->setCurrentWidget( widget );
-    if( b_autoresize )
-        resizeStack( stackWidgetsSizes[widget].width(), stackWidgetsSizes[widget].height() );
+    /* A widget shown for the first time has no size to restore (the video
+     * widget asks for its own right after). In minimal view the stack is the
+     * whole window, and an empty size would make the window empty: Qt then
+     * hides it, and on Wayland hiding a window destroys its surface, with the
+     * video's native child still attached to it. */
+    const QSize size = stackWidgetsSizes.value( widget );
+    if( b_autoresize && !size.isEmpty() )
+        resizeStack( size.width(), size.height() );
 
 #ifdef DEBUG_INTF
     msg_Dbg( p_intf, "Stack state changed to %s, index %i",
