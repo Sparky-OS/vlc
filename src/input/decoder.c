@@ -147,6 +147,19 @@ struct decoder_owner_sys_t
 
     /* Delay */
     vlc_tick_t i_ts_delay;
+
+    /* Frame sequential stereo: each picture waits for the other view of its
+     * pair, and the video output takes the two side by side */
+    struct
+    {
+        bool b_enabled;
+        bool b_right_first;     /* frame 0 of a pair is the right view */
+        bool b_marks;           /* the pictures' marks alternate and lead */
+        uint8_t i_last_mark;
+        picture_t *p_first;     /* frame 0 of the pair being made */
+        unsigned i_x, i_y;      /* place of a view in a decoded picture */
+        unsigned i_width, i_height; /* size of a view in the pair */
+    } pairs;
 };
 
 /* Pictures which are DECODER_BOGUS_VIDEO_DELAY or more in advance probably have
@@ -627,6 +640,153 @@ static void StereoJudge( decoder_t *p_dec, video_format_t *fmt )
 }
 #endif
 
+/**
+ * The format of the video output of a frame sequential stream, whose two
+ * views (constituent frames 0 and 1, H.264 D.2.26) come one picture after
+ * the other: the pictures of each pair are copied side by side, left view
+ * first, each view at its own resolution, into one picture of a side by side
+ * output. The decoder's pictures come from the same pool, so it holds both
+ * sizes. Pictures whose samples cannot be read (hardware surfaces) cannot be
+ * paired: returns false.
+ */
+static bool StereoPairFormat( decoder_t *p_dec, video_format_t *fmt )
+{
+    decoder_owner_sys_t *p_owner = p_dec->p_owner;
+    const vlc_chroma_description_t *dsc =
+        vlc_fourcc_GetChromaDescription( fmt->i_chroma );
+
+    if( dsc == NULL || dsc->plane_count == 0 )
+        return false;
+
+    /* a view starts on a whole sample of every plane */
+    unsigned i_width = fmt->i_visible_width;
+    for( unsigned i = 0; i < dsc->plane_count; i++ )
+        while( i_width % dsc->p[i].w.den )
+            i_width++;
+
+    p_owner->pairs.i_x = fmt->i_x_offset;
+    p_owner->pairs.i_y = fmt->i_y_offset;
+    p_owner->pairs.i_width = i_width;
+    p_owner->pairs.i_height = fmt->i_visible_height;
+
+    fmt->i_width = __MAX( fmt->i_width, 2 * i_width );
+    fmt->i_x_offset = 0;
+    fmt->i_y_offset = 0;
+    fmt->i_visible_width = 2 * i_width;
+    /* the frame of two views is shown with the shape of one */
+    fmt->i_sar_den *= 2;
+    vlc_ureduce( &fmt->i_sar_num, &fmt->i_sar_den,
+                 fmt->i_sar_num, fmt->i_sar_den, 50000 );
+    fmt->multiview_mode = MULTIVIEW_STEREO_SBS;
+    return true;
+}
+
+/* Copies the view of a decoded picture into its half of the pair */
+static void StereoPairCopy( decoder_owner_sys_t *p_owner, picture_t *p_dst,
+                            const picture_t *p_src, unsigned i_view )
+{
+    const vlc_chroma_description_t *dsc =
+        vlc_fourcc_GetChromaDescription( p_dst->format.i_chroma );
+
+    for( unsigned i = 0; i < dsc->plane_count
+                      && i < (unsigned)p_src->i_planes
+                      && i < (unsigned)p_dst->i_planes; i++ )
+    {
+        const plane_t *s = &p_src->p[i];
+        plane_t *d = &p_dst->p[i];
+        const unsigned wn = dsc->p[i].w.num, wd = dsc->p[i].w.den;
+        const unsigned hn = dsc->p[i].h.num, hd = dsc->p[i].h.den;
+        const size_t x = (size_t)p_owner->pairs.i_x * wn / wd * s->i_pixel_pitch;
+        const size_t y = (size_t)p_owner->pairs.i_y * hn / hd;
+        const size_t x_dst = (size_t)i_view * p_owner->pairs.i_width * wn / wd
+                           * d->i_pixel_pitch;
+        size_t width = ( (size_t)p_owner->pairs.i_width * wn + wd - 1 ) / wd
+                     * s->i_pixel_pitch;
+        size_t lines = ( (size_t)p_owner->pairs.i_height * hn + hd - 1 ) / hd;
+
+        if( x + width > (size_t)s->i_pitch )
+            width = s->i_pitch - __MIN( x, (size_t)s->i_pitch );
+        if( x_dst + width > (size_t)d->i_pitch )
+            width = d->i_pitch - __MIN( x_dst, (size_t)d->i_pitch );
+        lines = __MIN( lines, (size_t)__MAX( s->i_lines - (int)y, 0 ) );
+        lines = __MIN( lines, (size_t)d->i_lines );
+
+        for( size_t l = 0; l < lines; l++ )
+            memcpy( &d->p_pixels[l * d->i_pitch + x_dst],
+                    &s->p_pixels[(y + l) * s->i_pitch + x], width );
+    }
+}
+
+static void StereoPairReset( decoder_owner_sys_t *p_owner )
+{
+    if( p_owner->pairs.p_first != NULL )
+        picture_Release( p_owner->pairs.p_first );
+    p_owner->pairs.p_first = NULL;
+    p_owner->pairs.b_marks = true;
+    p_owner->pairs.i_last_mark = 0;
+}
+
+/**
+ * Pairs the pictures of a frame sequential stream in the order the decoder
+ * gives them, before anything may drop one, as the stream marks them: a
+ * picture marked as frame 0 starts a pair and frame 1 ends it, for as long as
+ * the marks alternate; without marks, or once they stop alternating, each
+ * two pictures in turn. Returns the pair, or NULL while it waits.
+ */
+static picture_t *StereoPair( decoder_t *p_dec, picture_t *p_pic )
+{
+    decoder_owner_sys_t *p_owner = p_dec->p_owner;
+    const uint8_t mark = p_pic->i_stereo_frame;
+
+    if( mark != 0 && mark == p_owner->pairs.i_last_mark
+     && p_owner->pairs.b_marks )
+    {
+        msg_Warn( p_dec, "the frames of the stereo pairs are not marked in "
+                  "turn: pairing them in order" );
+        p_owner->pairs.b_marks = false;
+    }
+    p_owner->pairs.i_last_mark = mark;
+
+    picture_t *p_first = p_owner->pairs.p_first;
+    if( p_owner->pairs.b_marks && mark != 0 )
+    {
+        if( mark == 1 )
+        {
+            /* frame 0: a pair starts, a frame 0 left alone is dropped */
+            if( p_first != NULL )
+                picture_Release( p_first );
+            p_owner->pairs.p_first = p_pic;
+            return NULL;
+        }
+        if( p_first == NULL )
+        {
+            /* frame 1 of a pair whose frame 0 was not decoded */
+            picture_Release( p_pic );
+            return NULL;
+        }
+    }
+    else if( p_first == NULL )
+    {
+        p_owner->pairs.p_first = p_pic;
+        return NULL;
+    }
+    p_owner->pairs.p_first = NULL;
+
+    picture_t *p_pair = vout_GetPicture( p_owner->p_vout );
+    if( p_pair != NULL )
+    {
+        const bool b_right_first = p_owner->pairs.b_right_first;
+        StereoPairCopy( p_owner, p_pair, b_right_first ? p_pic : p_first, 0 );
+        StereoPairCopy( p_owner, p_pair, b_right_first ? p_first : p_pic, 1 );
+        picture_CopyProperties( p_pair, p_first );
+        p_pair->b_force = p_first->b_force || p_pic->b_force;
+        p_pair->i_stereo_frame = 0;
+    }
+    picture_Release( p_first );
+    picture_Release( p_pic );
+    return p_pair;
+}
+
 static int vout_update_format( decoder_t *p_dec )
 {
     decoder_owner_sys_t *p_owner = p_dec->p_owner;
@@ -712,6 +872,17 @@ static int vout_update_format( decoder_t *p_dec )
 
         StereoJudge( p_dec, &fmt );
 
+        const bool b_pairs = fmt.multiview_mode == MULTIVIEW_STEREO_FRAME
+                          || fmt.multiview_mode == MULTIVIEW_STEREO_FRAME_RIGHT_FIRST;
+        const bool b_right_first = fmt.multiview_mode == MULTIVIEW_STEREO_FRAME_RIGHT_FIRST;
+        if( b_pairs && !StereoPairFormat( p_dec, &fmt ) )
+        {
+            /* the decoder then gives pictures of its own memory */
+            msg_Dbg( p_dec, "frame sequential stereo needs the samples of the "
+                     "pictures, not hardware surfaces" );
+            return -1;
+        }
+
         video_format_AdjustColorSpace( &fmt );
 
         vlc_mutex_lock( &p_owner->lock );
@@ -719,6 +890,11 @@ static int vout_update_format( decoder_t *p_dec )
         p_vout = p_owner->p_vout;
         p_owner->p_vout = NULL;
         vlc_mutex_unlock( &p_owner->lock );
+
+        /* a pair is made of pictures of one output */
+        StereoPairReset( p_owner );
+        p_owner->pairs.b_enabled = b_pairs;
+        p_owner->pairs.b_right_first = b_right_first;
 
         unsigned dpb_size;
         switch( p_dec->fmt_in.i_codec )
@@ -744,7 +920,9 @@ static int vout_update_format( decoder_t *p_dec )
         p_vout = input_resource_RequestVout( p_owner->p_resource,
                                              p_vout, &fmt,
                                              dpb_size +
-                                             p_dec->i_extra_picture_buffers + 1,
+                                             p_dec->i_extra_picture_buffers + 1
+                                             /* frame 0 waiting, the pair */
+                                             + ( b_pairs ? 2 : 0 ),
                                              true );
         vlc_mutex_lock( &p_owner->lock );
         p_owner->p_vout = p_vout;
@@ -1342,6 +1520,16 @@ static int DecoderQueueVideo( decoder_t *p_dec, picture_t *p_pic )
     unsigned i_lost = 0;
     decoder_owner_sys_t *p_owner = p_dec->p_owner;
 
+    if( p_owner->pairs.b_enabled )
+    {
+        p_pic = StereoPair( p_dec, p_pic );
+        if( p_pic == NULL )
+        {
+            p_owner->pf_update_stat( p_owner, 1, 0 );
+            return 0;
+        }
+    }
+
     int ret = DecoderPlayVideo( p_dec, p_pic, &i_lost );
 
     p_owner->pf_update_stat( p_owner, 1, i_lost );
@@ -1727,6 +1915,7 @@ static void DecoderProcessFlush( decoder_t *p_dec )
     }
     else if( p_dec->fmt_out.i_cat == VIDEO_ES )
     {
+        StereoPairReset( p_owner );
         if( p_owner->p_vout )
             vout_Flush( p_owner->p_vout, VLC_TICK_INVALID+1 );
     }
@@ -1896,6 +2085,10 @@ static decoder_t * CreateDecoder( vlc_object_t *p_parent,
     p_owner->p_resource = p_resource;
     p_owner->p_aout = NULL;
     p_owner->p_vout = NULL;
+    p_owner->pairs.b_enabled = false;
+    p_owner->pairs.p_first = NULL;
+    p_owner->pairs.b_marks = true;
+    p_owner->pairs.i_last_mark = 0;
     p_owner->p_spu_vout = NULL;
     p_owner->i_spu_channel = 0;
     p_owner->i_spu_order = 0;
@@ -2037,6 +2230,7 @@ static void DeleteDecoder( decoder_t * p_dec )
 
     const bool b_flush_spu = p_dec->fmt_out.i_cat == SPU_ES;
     UnloadDecoder( p_dec );
+    StereoPairReset( p_owner );
 
     /* Free all packets still in the decoder fifo. */
     block_FifoRelease( p_owner->p_fifo );
