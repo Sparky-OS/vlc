@@ -360,6 +360,8 @@ struct video_format_t
     video_chroma_location_t chroma_location;      /**< YCbCr chroma location */
 
     video_multiview_mode_t multiview_mode;        /** Multiview mode, 2D, 3D */
+    unsigned int i_stereo_plane_width;            /**< size of one view of a packed 3D frame as the container states it (Matroska DisplayWidth), 0 if not stated */
+    unsigned int i_stereo_plane_height;           /**< likewise for the height */
 
     video_projection_mode_t projection_mode;            /**< projection mode */
     vlc_viewpoint_t pose;
