@@ -134,6 +134,10 @@ bool VideoWidget::request( struct vout_window_t *p_wnd )
         video->installEventFilter(this);
         stable = QWidget::createWindowContainer(video, this);
         stable->setFocusPolicy(Qt::StrongFocus);
+        /* The native child's mouse moves reach this widget through the
+         * event filter: without tracking, Qt drops those with no button */
+        stable->setMouseTracking(true);
+        setMouseTracking(true);
         layout->addWidget(stable);
         stable->show();
         video->create();
