@@ -55,6 +55,7 @@ typedef struct vlc_gl_sys_t
 #if defined (USE_PLATFORM_WAYLAND)
     struct wl_egl_window *window;
     unsigned width, height;
+    bool swap_interval_set;
 #endif
     PFNEGLCREATEIMAGEKHRPROC    eglCreateImageKHR;
     PFNEGLDESTROYIMAGEKHRPROC   eglDestroyImageKHR;
@@ -67,6 +68,20 @@ static int MakeCurrent (vlc_gl_t *gl)
     if (eglMakeCurrent (sys->display, sys->surface, sys->surface,
                         sys->context) != EGL_TRUE)
         return VLC_EGENERIC;
+#ifdef USE_PLATFORM_WAYLAND
+    /* With a swap interval of 1, eglSwapBuffers() waits for the compositor's
+     * frame callback, and a window that is minimized, on another desktop or
+     * closing gets none: the swap never returns, the picture pool runs dry and
+     * the player cannot stop. The video output paces the pictures itself.
+     * Set at the first use, not when the surface is made: being current at
+     * 1x1 then gave the first buffer that size, and the first picture with it,
+     * whatever size the window took before it was drawn. */
+    if (!sys->swap_interval_set)
+    {
+        eglSwapInterval (sys->display, 0);
+        sys->swap_interval_set = true;
+    }
+#endif
     return VLC_SUCCESS;
 }
 
@@ -412,16 +427,7 @@ static int Open (vlc_object_t *obj, const struct gl_api *api)
     sys->context = ctx;
 
 #ifdef USE_PLATFORM_WAYLAND
-    /* With a swap interval of 1, eglSwapBuffers() waits for the compositor's
-     * frame callback, and a window that is minimized, on another desktop or
-     * closing gets none: the swap never returns, the picture pool runs dry and
-     * the player cannot stop. The video output paces the pictures itself. */
-    if (eglMakeCurrent(sys->display, sys->surface, sys->surface, ctx) == EGL_TRUE)
-    {
-        eglSwapInterval(sys->display, 0);
-        eglMakeCurrent(sys->display, EGL_NO_SURFACE, EGL_NO_SURFACE,
-                       EGL_NO_CONTEXT);
-    }
+    sys->swap_interval_set = false;
 #endif
 
     /* Initialize OpenGL callbacks */
