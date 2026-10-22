@@ -26,6 +26,7 @@
 
 #include <stdlib.h>
 #include <assert.h>
+#include <math.h>
 
 #include <vlc_common.h>
 #include <vlc_plugin.h>
@@ -408,6 +409,60 @@ static void PictureDisplay (vout_display_t *vd, picture_t *pic, subpicture_t *su
         subpicture_Delete(subpicture);
 }
 
+#ifdef HAVE_STEREO_DECLARE
+/**
+ * The size of the surface and the place of the picture in it, for the place
+ * the core gives the picture in the display. The surface of a stereoscopic
+ * video that the compositor takes holds both views at the resolution the
+ * video carries them: the display measured in a view's own samples, so that
+ * each view is drawn as it is, never scaled, and the compositor resizes the
+ * surface once to the display (SetViewSize). Otherwise, or where that would
+ * be larger than a texture can be (16384), the display's pixels, twice as wide
+ * for the two views of a stereoscopic surface.
+ */
+static void PlaceOnSurface(vout_display_t *vd, const vout_display_cfg_t *cfg,
+                           vout_display_place_t *place, unsigned *width,
+                           unsigned *height, int *stride)
+{
+    vout_display_sys_t *sys = vd->sys;
+    const video_format_t *src = &vd->source;
+    unsigned view_w = src->i_visible_width, view_h = src->i_visible_height;
+
+    *width = cfg->display.width * (sys->stereo ? 2 : 1);
+    *height = cfg->display.height;
+    *stride = sys->stereo ? cfg->display.width : 0;
+    if (!sys->stereo)
+        return;
+    switch (src->multiview_mode)
+    {
+    case MULTIVIEW_STEREO_SBS:
+    case MULTIVIEW_STEREO_SBS_RIGHT_FIRST:
+        view_w /= 2;
+        break;
+    case MULTIVIEW_STEREO_TB:
+    case MULTIVIEW_STEREO_TB_RIGHT_FIRST:
+        view_h /= 2;
+        break;
+    default:
+        return;
+    }
+    if (view_w == 0 || view_h == 0 || place->width == 0 || place->height == 0)
+        return;
+    /* the view's samples per pixel of the display, along each axis */
+    double kx = (double)view_w / place->width;
+    double ky = (double)view_h / place->height;
+    int x = lround(place->x * kx), y = lround(place->y * ky);
+    unsigned w = __MAX((unsigned)lround(cfg->display.width * kx), x + view_w);
+    unsigned h = __MAX((unsigned)lround(cfg->display.height * ky), y + view_h);
+    if (2 * w > 16384 || h > 16384)
+        return;
+    *width = 2 * w;
+    *height = h;
+    *stride = w;
+    *place = (vout_display_place_t) { .x = x, .y = y, .width = view_w, .height = view_h };
+}
+#endif
+
 static int Control (vout_display_t *vd, int query, va_list ap)
 {
     vout_display_sys_t *sys = vd->sys;
@@ -434,22 +489,23 @@ static int Control (vout_display_t *vd, int query, va_list ap)
             c.align.vertical = VOUT_DISPLAY_ALIGN_TOP;
 
         vout_display_PlacePicture (&place, src, &c, false);
-        unsigned width = c.display.width;
+        unsigned width = c.display.width, height = c.display.height;
+        const float aspect = (float)place.width / place.height;
 #ifdef HAVE_STEREO_DECLARE
-        width *= sys->stereo ? 2 : 1;
+        int stride;
+        PlaceOnSurface(vd, &c, &place, &width, &height, &stride);
 # ifdef VLC_GL_WAYLAND
         SetViewSize(sys, c.display.width, c.display.height);
 # endif
 #endif
-        vlc_gl_Resize (sys->gl, width, c.display.height);
+        vlc_gl_Resize (sys->gl, width, height);
         if (vlc_gl_MakeCurrent (sys->gl) != VLC_SUCCESS)
             return VLC_EGENERIC;
-        vout_display_opengl_SetWindowAspectRatio(sys->vgl, (float)place.width / place.height);
+        vout_display_opengl_SetWindowAspectRatio(sys->vgl, aspect);
         vout_display_opengl_Viewport(sys->vgl, place.x, place.y, place.width, place.height);
 #ifdef HAVE_STEREO_DECLARE
         /* The second view is in the second half of the declared window */
-        vout_display_opengl_SetViewStride(sys->vgl,
-                                          sys->stereo ? c.display.width : 0);
+        vout_display_opengl_SetViewStride(sys->vgl, stride);
 #endif
         vlc_gl_ReleaseCurrent (sys->gl);
         return VLC_SUCCESS;
@@ -462,10 +518,20 @@ static int Control (vout_display_t *vd, int query, va_list ap)
         vout_display_place_t place;
 
         vout_display_PlacePicture (&place, &vd->source, cfg, false);
+        const float aspect = (float)place.width / place.height;
+#ifdef HAVE_STEREO_DECLARE
+        unsigned width, height;
+        int stride;
+        PlaceOnSurface(vd, cfg, &place, &width, &height, &stride);
+        vlc_gl_Resize (sys->gl, width, height);
+#endif
         if (vlc_gl_MakeCurrent (sys->gl) != VLC_SUCCESS)
             return VLC_EGENERIC;
-        vout_display_opengl_SetWindowAspectRatio(sys->vgl, (float)place.width / place.height);
+        vout_display_opengl_SetWindowAspectRatio(sys->vgl, aspect);
         vout_display_opengl_Viewport(sys->vgl, place.x, place.y, place.width, place.height);
+#ifdef HAVE_STEREO_DECLARE
+        vout_display_opengl_SetViewStride(sys->vgl, stride);
+#endif
         vlc_gl_ReleaseCurrent (sys->gl);
         return VLC_SUCCESS;
       }
