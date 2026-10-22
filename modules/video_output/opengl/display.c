@@ -460,7 +460,13 @@ static void PlaceOnSurface(vout_display_t *vd, const vout_display_cfg_t *cfg,
     *width = cfg->display.width * (sys->stereo ? 2 : 1);
     *height = cfg->display.height;
     *stride = sys->stereo ? cfg->display.width : 0;
-    if (!sys->stereo)
+    /* Only a viewport tells the compositor the size the views are shown at:
+     * an X11 window is its own buffer, at the window's size */
+    bool viewport = false;
+# ifdef VLC_GL_WAYLAND
+    viewport = sys->viewport != NULL;
+# endif
+    if (!sys->stereo || !viewport)
         return;
     switch (src->multiview_mode)
     {
