@@ -163,6 +163,12 @@ void vout_IntfInit( vout_thread_t *p_vout )
     var_Create( p_vout, "mouse-hide-timeout",
                 VLC_VAR_INTEGER | VLC_VAR_DOINHERIT );
 
+    /* The eye order of a 3D video, corrected for this video. The format
+     * of the compositor's output is not changed. */
+    var_Create( p_vout, "stereo-swap-eyes", VLC_VAR_BOOL | VLC_VAR_ISCOMMAND );
+    text.psz_string = _("Swap left and right eyes");
+    var_Change( p_vout, "stereo-swap-eyes", VLC_VAR_SETTEXT, &text, NULL );
+
     /* Add variables to manage scaling video */
     var_Create( p_vout, "autoscale", VLC_VAR_BOOL | VLC_VAR_DOINHERIT
                 | VLC_VAR_ISCOMMAND );

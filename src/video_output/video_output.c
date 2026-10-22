@@ -231,6 +231,8 @@ vout_thread_t *vout_Request(vlc_object_t *object,
     /* If a vout is provided, try reusing it */
     if (vout) {
         if (vout->p->input != cfg->input) {
+            /* A correction of one video is not carried to the next */
+            var_SetBool(vout, "stereo-swap-eyes", false);
             if (vout->p->input)
                 spu_Attach(vout->p->spu, vout->p->input, false);
             vout->p->input = cfg->input;

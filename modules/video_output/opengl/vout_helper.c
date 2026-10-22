@@ -1825,7 +1825,8 @@ static unsigned TextureCropForStereo(vout_display_opengl_t *vgl,
 }
 
 static int DisplayView(vout_display_opengl_t *vgl,
-                       const video_format_t *source, unsigned eye)
+                       const video_format_t *source, unsigned eye,
+                       bool swap_eyes)
 {
     if (vgl->viewport[2] != 0)
         vgl->vt.Viewport(vgl->viewport[0] + eye * vgl->view_stride,
@@ -1869,8 +1870,9 @@ static int DisplayView(vout_display_opengl_t *vgl,
         }
 
         float checkerboard[PICTURE_PLANE_MAX] = { 0 };
-        unsigned view = TextureCropForStereo(vgl, source, eye, left, top,
-                                             right, bottom, checkerboard);
+        unsigned view = TextureCropForStereo(vgl, source, eye ^ swap_eyes,
+                                             left, top, right, bottom,
+                                             checkerboard);
         int ret = SetupCoords(vgl, left, top, right, bottom,
                               checkerboard[0] != 0 ? checkerboard : NULL,
                               source->i_visible_height, view);
@@ -1994,9 +1996,13 @@ int vout_display_opengl_Display(vout_display_opengl_t *vgl,
         stereo = false;
     }
 
+    /* Read once for both views, so that a change cannot give both eyes the
+     * same view */
+    const bool swap_eyes = stereo
+                        && var_InheritBool(vgl->gl, "stereo-swap-eyes");
     for (unsigned eye = 0; eye < (stereo ? 2 : 1); eye++)
     {
-        int ret = DisplayView(vgl, source, eye);
+        int ret = DisplayView(vgl, source, eye, swap_eyes);
         if (ret != VLC_SUCCESS)
             return ret;
     }

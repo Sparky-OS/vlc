@@ -249,6 +249,7 @@ static int VideoAutoMenuBuilder( playlist_t *pl, input_thread_t *p_input,
     PUSH_VAR( "crop" );
     PUSH_VAR( "deinterlace" );
     PUSH_VAR( "deinterlace-mode" );
+    PUSH_VAR( "stereo-swap-eyes" );
 
     if( p_object )
         vlc_object_release( p_object );
@@ -698,6 +699,7 @@ QMenu *VLCMenuBar::VideoMenu( intf_thread_t *p_intf, QMenu *current )
         /* Rendering modifiers */
         addActionWithSubmenu( current, "deinterlace", qtr( "&Deinterlace" ) );
         addActionWithSubmenu( current, "deinterlace-mode", qtr( "&Deinterlace mode" ) );
+        addActionWithCheckbox( current, "stereo-swap-eyes", qtr( "Swap left and right eyes" ) );
 
         current->addSeparator();
         /* Other actions */
